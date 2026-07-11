@@ -69,3 +69,9 @@ end_scope :: proc() {
 	ctx.current_scope = child.parent
 }
 
+
+@(deferred_none = end_scope)
+scope :: proc(size: Vec2) {
+	begin_scope(size)
+}
+

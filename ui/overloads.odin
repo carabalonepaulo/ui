@@ -8,3 +8,8 @@ deinit :: proc {
 	deinit_context,
 }
 
+next :: proc {
+	row_next,
+	col_next,
+}
+

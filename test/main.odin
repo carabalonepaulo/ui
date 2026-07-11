@@ -45,35 +45,42 @@ main :: proc() {
 }
 
 simple :: proc() {
-	ui.begin_scope({100, 100})
+	ui.scope({100, 100})
 	ui.draw_rect(0, 0, 800, 600, transmute(ui.Color)(rl.RED))
 
 	scope := ui.get_scope()
 	scope.cursor += {75, 75}
 	scope.offset += {25, 25}
 
-	ui.begin_scope({50, 50})
+	ui.scope({50, 50})
 	ui.draw_rect(0, 0, 800, 600, transmute(ui.Color)(rl.GREEN))
-	ui.end_scope()
-
-	ui.end_scope()
 }
 
 row :: proc() {
-	row := ui.begin_row(
-		{400, 100},
-		{{.Absolute, 80}, {.Flex, 1}},
-		gap = 8,
-		padding = {16, 16, 16, 16},
-	)
-	defer ui.end_row()
+	ui.scope({400, 100})
+	size := ui.get_available_size()
+	ui.draw_rect(0, 0, size.x, size.y, transmute(ui.Color)(rl.GRAY))
 
-	if ui.row_next(&row) {
+	row := ui.row({400, 100}, {{.Absolute, 80}, {.Flex, 1}}, gap = 10, padding = {10, 10, 10, 10})
+
+	if ui.next(&row) {
 		child_size := ui.get_available_size()
 		ui.draw_rect(0, 0, child_size.x, child_size.y, transmute(ui.Color)(rl.RED))
+
+		col := ui.col(child_size, {{.Flex, 1}, {.Flex, 2}}, 10, {10, 10, 10, 10})
+
+		if ui.next(&col) {
+			child_size := ui.get_available_size()
+			ui.draw_rect(0, 0, child_size.x, child_size.y, transmute(ui.Color)(rl.MAGENTA))
+		}
+
+		if ui.next(&col) {
+			child_size := ui.get_available_size()
+			ui.draw_rect(0, 0, child_size.x, child_size.y, transmute(ui.Color)(rl.BLUE))
+		}
 	}
 
-	if ui.row_next(&row) {
+	if ui.next(&row) {
 		child_size := ui.get_available_size()
 		ui.draw_rect(0, 0, child_size.x, child_size.y, transmute(ui.Color)(rl.GREEN))
 	}
