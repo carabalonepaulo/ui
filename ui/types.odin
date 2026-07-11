@@ -3,7 +3,7 @@ package ui
 import "core:mem"
 Vec2 :: [2]f32
 
-Rect :: [4]f32
+Rect :: [4]i32
 
 Color :: [4]u8
 
@@ -27,7 +27,7 @@ Callbacks :: struct {
 	draw_rect:         proc(x, y, w, h: f32, color: Color),
 	draw_texture:      proc(),
 	//
-	enable_scissors:   proc(x, y, w, h: f32),
+	enable_scissors:   proc(x, y, w, h: i32),
 	disable_scissors:  proc(),
 }
 

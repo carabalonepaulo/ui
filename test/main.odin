@@ -16,8 +16,8 @@ main :: proc() {
 				transmute(rl.Color)(color),
 			)
 		},
-		enable_scissors = proc(x, y, w, h: f32) {
-			rl.BeginScissorMode((c.int)(x), (c.int)(y), (c.int)(w), (c.int)(h))
+		enable_scissors = proc(x, y, w, h: i32) {
+			rl.BeginScissorMode(x, y, w, h)
 		},
 		disable_scissors = proc() {
 			rl.EndScissorMode()

@@ -1,5 +1,6 @@
 package ui
 
+import "core:math"
 intersect_rects :: proc(a, b: Rect) -> Rect {
 	ix1 := max(a[0], b[0])
 	iy1 := max(a[1], b[1])
@@ -26,7 +27,7 @@ begin_scope :: proc(size: Vec2, flags: Scope_Flags = {}) {
 		size   = size,
 		flags  = flags,
 	}
-	rect := Rect{0, 0, size[0], size[1]}
+	rect := Rect{0, 0, i32(math.ceil(size[0])), i32(math.ceil(size[1]))}
 
 	if parent_idx != -1 {
 		parent := &ctx.buffer[parent_idx]
@@ -39,11 +40,13 @@ begin_scope :: proc(size: Vec2, flags: Scope_Flags = {}) {
 		parent.content_size.x = max(parent.content_size.x, child_extended_boundary.x)
 		parent.content_size.y = max(parent.content_size.y, child_extended_boundary.y)
 
-		rect[0] = scope.screen_pos[0]
-		rect[1] = scope.screen_pos[1]
+		rect[0] = i32(scope.screen_pos[0])
+		rect[1] = i32(scope.screen_pos[1])
 		scope.clip = intersect_rects(parent.clip, rect)
 	} else {
-		scope.clip = Rect{scope.screen_pos[0], scope.screen_pos[1], size[0], size[1]}
+		rect[0] = i32(scope.screen_pos[0])
+		rect[1] = i32(scope.screen_pos[1])
+		scope.clip = rect
 	}
 
 	ctx.current_scope = idx
