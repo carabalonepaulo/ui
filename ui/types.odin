@@ -32,13 +32,14 @@ Callbacks :: struct {
 }
 
 Scope :: struct {
-	parent:     int,
-	screen_pos: Vec2,
-	pos:        Vec2,
-	size:       Vec2,
-	offset:     Vec2,
-	cursor:     Vec2,
-	clip:       Rect,
+	parent:       int,
+	screen_pos:   Vec2,
+	pos:          Vec2,
+	size:         Vec2,
+	content_size: Vec2,
+	offset:       Vec2,
+	cursor:       Vec2,
+	clip:         Rect,
 }
 
 Context :: struct {

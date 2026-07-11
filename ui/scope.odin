@@ -34,6 +34,10 @@ begin_scope :: proc(size: Vec2) {
 		scope.pos = parent.cursor
 		scope.parent = parent_idx
 
+		child_extended_boundary := parent.cursor + size
+		parent.content_size.x = max(parent.content_size.x, child_extended_boundary.x)
+		parent.content_size.y = max(parent.content_size.y, child_extended_boundary.y)
+
 		rect[0] = scope.screen_pos[0]
 		rect[1] = scope.screen_pos[1]
 		scope.clip = intersect_rects(parent.clip, rect)
