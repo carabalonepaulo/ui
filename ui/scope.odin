@@ -13,7 +13,7 @@ intersect_rects :: proc(a, b: Rect) -> Rect {
 	return Rect{0, 0, 0, 0}
 }
 
-begin_scope :: proc(ctx: ^Context, size: Vec2) {
+begin_scope :: proc(size: Vec2) {
 	parent_idx := ctx.current_scope
 
 	idx := ctx.scope_count + 1
@@ -46,7 +46,7 @@ begin_scope :: proc(ctx: ^Context, size: Vec2) {
 	ctx.callbacks.enable_scissors(scope.clip[0], scope.clip[1], scope.clip[2], scope.clip[3])
 }
 
-end_scope :: proc(ctx: ^Context) {
+end_scope :: proc() {
 	assert(ctx.current_scope != -1, "end_scope() must be called after a begin_scope()")
 
 	child := &ctx.buffer[ctx.current_scope]

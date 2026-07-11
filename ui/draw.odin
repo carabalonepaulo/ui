@@ -1,6 +1,6 @@
 package ui
 
-draw_rect :: proc(ctx: ^Context, x, y, w, h: f32, color: Color) {
+draw_rect :: proc(x, y, w, h: f32, color: Color) {
 	assert(ctx.current_scope != -1, "invalid scope")
 
 	scope := &ctx.buffer[ctx.current_scope]

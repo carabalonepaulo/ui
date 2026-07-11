@@ -2,6 +2,7 @@ package test
 
 import "../ui"
 import "core:c"
+import "core:mem"
 import rl "vendor:raylib"
 
 main :: proc() {
@@ -23,9 +24,8 @@ main :: proc() {
 		},
 	}
 
-	ctx: ui.Context
-	ui.init(&ctx, callbacks, 1024)
-	defer ui.deinit(&ctx)
+	ui.init(callbacks, 1024, 8 * mem.Megabyte)
+	defer ui.deinit()
 
 	rl.InitWindow(800, 600, "UI")
 	defer rl.CloseWindow()
@@ -36,21 +36,46 @@ main :: proc() {
 
 		rl.ClearBackground(rl.WHITE)
 
-		ui.begin_frame(&ctx)
-		defer ui.end_frame(&ctx)
+		ui.begin_frame()
+		defer ui.end_frame()
 
-		ui.begin_scope(&ctx, {100, 100})
-		ui.draw_rect(&ctx, 0, 0, 800, 600, transmute(ui.Color)(rl.RED))
+		// simple()
+		row()
+	}
+}
 
-		scope := ui.get_scope(&ctx)
-		scope.cursor += {75, 75}
-		scope.offset += {25, 25}
+simple :: proc() {
+	ui.begin_scope({100, 100})
+	ui.draw_rect(0, 0, 800, 600, transmute(ui.Color)(rl.RED))
 
-		ui.begin_scope(&ctx, {50, 50})
-		ui.draw_rect(&ctx, 0, 0, 800, 600, transmute(ui.Color)(rl.GREEN))
-		ui.end_scope(&ctx)
+	scope := ui.get_scope()
+	scope.cursor += {75, 75}
+	scope.offset += {25, 25}
 
-		ui.end_scope(&ctx)
+	ui.begin_scope({50, 50})
+	ui.draw_rect(0, 0, 800, 600, transmute(ui.Color)(rl.GREEN))
+	ui.end_scope()
+
+	ui.end_scope()
+}
+
+row :: proc() {
+	row := ui.begin_row(
+		{400, 100},
+		{{.Absolute, 80}, {.Flex, 1}},
+		gap = 8,
+		padding = {16, 16, 16, 16},
+	)
+	defer ui.end_row()
+
+	if ui.row_next(&row) {
+		child_size := ui.get_available_size()
+		ui.draw_rect(0, 0, child_size.x, child_size.y, transmute(ui.Color)(rl.RED))
+	}
+
+	if ui.row_next(&row) {
+		child_size := ui.get_available_size()
+		ui.draw_rect(0, 0, child_size.x, child_size.y, transmute(ui.Color)(rl.GREEN))
 	}
 }
 

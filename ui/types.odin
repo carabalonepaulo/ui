@@ -1,5 +1,6 @@
 package ui
 
+import "core:mem"
 Vec2 :: [2]f32
 
 Rect :: [4]f32
@@ -41,9 +42,12 @@ Scope :: struct {
 }
 
 Context :: struct {
-	callbacks:     Callbacks,
-	current_scope: int,
-	scope_count:   int,
-	buffer:        []Scope,
+	callbacks:       Callbacks,
+	current_scope:   int,
+	scope_count:     int,
+	buffer:          []Scope,
+	memory:          []u8,
+	arena:           mem.Arena,
+	arena_allocator: mem.Allocator,
 }
 
