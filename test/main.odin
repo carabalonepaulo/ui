@@ -40,7 +40,8 @@ main :: proc() {
 		defer ui.end_frame()
 
 		// simple()
-		row()
+		// row()
+		wrap()
 	}
 }
 
@@ -83,6 +84,37 @@ row :: proc() {
 	if ui.next(&row) {
 		child_size := ui.get_available_size()
 		ui.draw_rect(0, 0, child_size.x, child_size.y, transmute(ui.Color)(rl.GREEN))
+	}
+}
+
+wrap :: proc() {
+	ui.scope({400, 140})
+	size := ui.get_available_size()
+	ui.draw_rect(0, 0, size.x, size.y, transmute(ui.Color)(rl.GRAY))
+
+	w := ui.wrap(size, gap = {8, 8}, padding = {12, 12, 12, 12})
+
+	item_sizes := []ui.Vec2 {
+		{70, 30},
+		{120, 45},
+		{60, 30},
+		{150, 25},
+		{90, 50},
+		{80, 35},
+		{110, 30},
+		{130, 30},
+		{50, 25},
+	}
+
+	palette := []rl.Color{rl.RED, rl.GREEN, rl.BLUE, rl.MAGENTA, rl.ORANGE, rl.LIME, rl.GOLD}
+
+	for item_size, index in item_sizes {
+		if ui.next(&w, item_size) {
+			child_size := ui.get_available_size()
+
+			color := palette[index % len(palette)]
+			ui.draw_rect(0, 0, child_size.x, child_size.y, transmute(ui.Color)(color))
+		}
 	}
 }
 

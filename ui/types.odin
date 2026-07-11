@@ -31,6 +31,12 @@ Callbacks :: struct {
 	disable_scissors:  proc(),
 }
 
+Scope_Flag :: enum {
+	Clip,
+}
+
+Scope_Flags :: bit_set[Scope_Flag]
+
 Scope :: struct {
 	parent:       int,
 	screen_pos:   Vec2,

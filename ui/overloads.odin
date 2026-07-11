@@ -11,5 +11,6 @@ deinit :: proc {
 next :: proc {
 	row_next,
 	col_next,
+	wrap_next,
 }
 
