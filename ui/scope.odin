@@ -13,7 +13,7 @@ intersect_rects :: proc(a, b: Rect) -> Rect {
 	return Rect{0, 0, 0, 0}
 }
 
-begin_scope :: proc(size: Vec2) {
+begin_scope :: proc(size: Vec2, flags: Scope_Flags = {}) {
 	parent_idx := ctx.current_scope
 
 	idx := ctx.scope_count + 1
@@ -24,6 +24,7 @@ begin_scope :: proc(size: Vec2) {
 	scope^ = Scope {
 		parent = parent_idx,
 		size   = size,
+		flags  = flags,
 	}
 	rect := Rect{0, 0, size[0], size[1]}
 
@@ -47,28 +48,34 @@ begin_scope :: proc(size: Vec2) {
 
 	ctx.current_scope = idx
 
-	ctx.callbacks.enable_scissors(scope.clip[0], scope.clip[1], scope.clip[2], scope.clip[3])
+	if .Clip in flags {
+		ctx.callbacks.enable_scissors(scope.clip[0], scope.clip[1], scope.clip[2], scope.clip[3])
+	}
 }
 
 end_scope :: proc() {
 	assert(ctx.current_scope != -1, "end_scope() must be called after a begin_scope()")
 
 	child := &ctx.buffer[ctx.current_scope]
-	ctx.callbacks.disable_scissors()
-	if child.parent != -1 {
-		parent := &ctx.buffer[child.parent]
-		ctx.callbacks.enable_scissors(
-			parent.clip[0],
-			parent.clip[1],
-			parent.clip[2],
-			parent.clip[3],
-		)
-	} else {
+	if .Clip in child.flags {
 		ctx.callbacks.disable_scissors()
+		parent := child.parent
+		for parent != -1 {
+			scope := &ctx.buffer[parent]
+			if .Clip in scope.flags {
+				ctx.callbacks.enable_scissors(
+					scope.clip[0],
+					scope.clip[1],
+					scope.clip[2],
+					scope.clip[3],
+				)
+				break
+			}
+			parent = scope.parent
+		}
 	}
 	ctx.current_scope = child.parent
 }
-
 
 @(deferred_none = end_scope)
 scope :: proc(size: Vec2) {

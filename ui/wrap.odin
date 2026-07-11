@@ -16,7 +16,7 @@ begin_wrap :: proc(size: Vec2, gap: Vec2 = {0, 0}, padding: [4]f32 = {0, 0, 0, 0
 
 	usable_size := Vec2{size.x - (padding[1] + padding[3]), size.y - (padding[0] + padding[2])}
 
-	begin_scope(usable_size)
+	begin_scope(usable_size, {.Clip})
 
 	return Wrap {
 		content_scope = ctx.current_scope,

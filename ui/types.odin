@@ -46,6 +46,7 @@ Scope :: struct {
 	offset:       Vec2,
 	cursor:       Vec2,
 	clip:         Rect,
+	flags:        Scope_Flags,
 }
 
 Context :: struct {
