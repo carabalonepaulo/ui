@@ -22,6 +22,7 @@ begin_scope :: proc(size: Vec2, flags: Scope_Flags = {}) {
 	ctx.scope_count += 1
 	assert(idx < len(ctx.buffer), "ui buffer overflow")
 
+	ctx.interest_buffer[idx] = {}
 	scope := &ctx.buffer[idx]
 	scope^ = Scope {
 		parent = parent_idx,
@@ -93,7 +94,7 @@ bind :: proc(interest: Interest, ptr: rawptr) {
 
 	scope := get_scope()
 	scope.interests += {interest}
-	scope.interests_ptrs[interest] = ptr
+	ctx.interest_buffer[ctx.current_scope][interest] = ptr
 
 	#partial switch interest {
 	case .Scroll_X:

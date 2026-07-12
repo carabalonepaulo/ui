@@ -2,6 +2,7 @@ package test
 
 import "../ui"
 import "core:c"
+import "core:fmt"
 import "core:mem"
 import rl "vendor:raylib"
 
@@ -81,6 +82,10 @@ main :: proc() {
 }
 
 is_hovered := false
+is_pressed := false
+is_pressed_out := false
+is_released := false
+is_released_out := false
 
 simple :: proc() {
 	ui.scope({100, 100}, {.Clip})
@@ -92,9 +97,18 @@ simple :: proc() {
 
 	ui.scope({50, 50})
 	ui.bind(.Hovered, &is_hovered)
+	ui.bind(.Pressed, &is_pressed)
+	ui.bind(.Pressed_Out, &is_pressed_out)
+	ui.bind(.Released, &is_released)
+	ui.bind(.Released_Out, &is_released_out)
 
 	color := is_hovered ? rl.GREEN : rl.MAGENTA
 	ui.draw_rect(0, 0, 800, 600, transmute(ui.Color)(color))
+
+	if is_pressed do fmt.println("is pressed / hover =", is_hovered)
+	if is_pressed_out do fmt.println("is pressed out / hover =", is_hovered)
+	if is_released do fmt.println("is released / hover =", is_hovered)
+	if is_released_out do fmt.println("is released out / hover =", is_hovered)
 }
 
 row :: proc() {

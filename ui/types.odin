@@ -58,17 +58,16 @@ Scope_Flag :: enum {
 Scope_Flags :: bit_set[Scope_Flag]
 
 Scope :: struct {
-	parent:         int,
-	screen_pos:     Vec2,
-	pos:            Vec2,
-	size:           Vec2,
-	content_size:   Vec2,
-	offset:         Vec2,
-	cursor:         Vec2,
-	clip:           Rect,
-	flags:          Scope_Flags,
-	interests:      Interests,
-	interests_ptrs: [Interest]rawptr,
+	parent:       int,
+	screen_pos:   Vec2,
+	pos:          Vec2,
+	size:         Vec2,
+	content_size: Vec2,
+	offset:       Vec2,
+	cursor:       Vec2,
+	clip:         Rect,
+	flags:        Scope_Flags,
+	interests:    Interests,
 }
 
 Context :: struct {
@@ -76,6 +75,7 @@ Context :: struct {
 	current_scope:   int,
 	scope_count:     int,
 	buffer:          []Scope,
+	interest_buffer: [][Interest]rawptr,
 	memory:          []u8,
 	arena:           mem.Arena,
 	arena_allocator: mem.Allocator,
