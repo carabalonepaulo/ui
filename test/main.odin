@@ -3,6 +3,7 @@ package test
 import "../ui"
 import "core:c"
 import "core:fmt"
+import "core:math"
 import "core:mem"
 import rl "vendor:raylib"
 
@@ -70,8 +71,7 @@ main :: proc() {
 
 		rl.ClearBackground(rl.WHITE)
 
-		ui.begin_frame()
-		defer ui.end_frame()
+		ui.frame()
 
 		w, h := rl.GetScreenWidth(), rl.GetScreenHeight()
 		col := ui.col({f32(w), f32(h)}, {{.Flex, 1}, {.Flex, 1}, {.Flex, 1}}, 32)
@@ -86,6 +86,9 @@ is_pressed := false
 is_pressed_out := false
 is_released := false
 is_released_out := false
+is_hover_popup := false
+
+popup_visible := false
 
 simple :: proc() {
 	ui.scope({100, 100}, {.Clip})
@@ -104,6 +107,19 @@ simple :: proc() {
 
 	color := is_hovered ? rl.GREEN : rl.MAGENTA
 	ui.draw_rect(0, 0, 800, 600, transmute(ui.Color)(color))
+
+	if is_hovered do popup_visible = true
+
+	if popup_visible {
+		anchor := ui.get_anchor(.Bottom_Left)
+		ui.popup_with_poly(anchor, {100, 100}, rl.RED, proc(color: rl.Color) {
+			ui.bind(.Hovered, &is_hover_popup)
+			size := ui.get_available_size()
+			color := is_hover_popup ? color : rl.PURPLE
+			ui.draw_rect(0, 0, size.x, size.y, transmute(ui.Color)(color))
+		})
+		if !is_hover_popup && !is_hovered do popup_visible = false
+	}
 
 	if is_pressed do fmt.println("is pressed / hover =", is_hovered)
 	if is_pressed_out do fmt.println("is pressed out / hover =", is_hovered)

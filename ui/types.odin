@@ -1,5 +1,6 @@
 package ui
 
+import "core:container/queue"
 import "core:mem"
 
 Texture :: distinct u64
@@ -38,6 +39,29 @@ Callbacks :: struct {
 	disable_scissors:  proc(),
 }
 
+Deferred_Kind :: enum {
+	Pre,
+	Post,
+}
+
+Deferred :: struct {
+	fn: proc(ud: rawptr),
+	ud: rawptr,
+}
+
+Popup :: struct {
+	pos:  Vec2,
+	size: Vec2,
+	fn:   proc(),
+}
+
+Popup_With :: struct($T: typeid) {
+	pos:  Vec2,
+	size: Vec2,
+	fn:   proc(arg: T),
+	ud:   T,
+}
+
 Interest :: enum {
 	Scroll_X,
 	Scroll_Y,
@@ -53,6 +77,7 @@ Interests :: bit_set[Interest]
 
 Scope_Flag :: enum {
 	Clip,
+	Popup,
 }
 
 Scope_Flags :: bit_set[Scope_Flag]
@@ -76,9 +101,25 @@ Context :: struct {
 	scope_count:     int,
 	buffer:          []Scope,
 	interest_buffer: [][Interest]rawptr,
+	//
+	deferred_pre:    queue.Queue(Deferred),
+	deferred_post:   queue.Queue(Deferred),
+	//
 	memory:          []u8,
 	arena:           mem.Arena,
 	arena_allocator: mem.Allocator,
+}
+
+Anchor :: enum {
+	Top_Left,
+	Top,
+	Top_Right,
+	Left,
+	Center,
+	Right,
+	Bottom_Left,
+	Bottom,
+	Bottom_Right,
 }
 
 Mouse_Button :: enum i32 {

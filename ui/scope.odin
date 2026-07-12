@@ -2,23 +2,18 @@ package ui
 
 import "core:math"
 
-intersect_rects :: proc(a, b: Rect) -> Rect {
-	ix1 := max(a[0], b[0])
-	iy1 := max(a[1], b[1])
-	ix2 := min(a[0] + a[2], b[0] + b[2])
-	iy2 := min(a[1] + a[3], b[1] + b[3])
-
-	if ix2 > ix1 && iy2 > iy1 {
-		return Rect{ix1, iy1, ix2 - ix1, iy2 - iy1}
-	}
-
-	return Rect{0, 0, 0, 0}
+intersect :: proc(a, b: Rect) -> Rect {
+	x1 := max(a.x, b.x)
+	y1 := max(a.y, b.y)
+	x2 := min(a.x + a.z, b.x + b.z)
+	y2 := min(a.y + a.w, b.y + b.w)
+	return x2 > x1 && y2 > y1 ? Rect{x1, y1, x2 - x1, y2 - y1} : {0, 0, 0, 0}
 }
 
 begin_scope :: proc(size: Vec2, flags: Scope_Flags = {}) {
 	parent_idx := ctx.current_scope
 
-	idx := ctx.scope_count + 1
+	idx := ctx.scope_count
 	ctx.scope_count += 1
 	assert(idx < len(ctx.buffer), "ui buffer overflow")
 
@@ -44,7 +39,7 @@ begin_scope :: proc(size: Vec2, flags: Scope_Flags = {}) {
 
 		rect[0] = i32(scope.screen_pos[0])
 		rect[1] = i32(scope.screen_pos[1])
-		scope.clip = intersect_rects(parent.clip, rect)
+		scope.clip = intersect(parent.clip, rect)
 	} else {
 		rect[0] = i32(scope.screen_pos[0])
 		rect[1] = i32(scope.screen_pos[1])
@@ -87,6 +82,15 @@ scope :: proc(size: Vec2, flags: Scope_Flags = {}) {
 	begin_scope(size, flags)
 }
 
+@(deferred_none = end_scope)
+scope_at :: proc(pos: Vec2, size: Vec2, flags: Scope_Flags = {}) {
+	parent := get_scope()
+	old_cursor := parent.cursor
+	parent.cursor = pos
+	begin_scope(size, flags)
+	parent.cursor = old_cursor
+}
+
 bind :: proc(interest: Interest, ptr: rawptr) {
 	assert(ctx.current_scope != -1, "invalid scope")
 
@@ -102,5 +106,89 @@ bind :: proc(interest: Interest, ptr: rawptr) {
 	case .Scroll_Y:
 		scope.offset.y = (^f32)(ptr)^
 	}
+}
+
+get_scope :: #force_inline proc() -> ^Scope {
+	return &ctx.buffer[ctx.current_scope]
+}
+
+get_parent_scope :: #force_inline proc() -> ^Scope {
+	return &ctx.buffer[ctx.buffer[ctx.current_scope].parent]
+}
+
+get_available_size :: #force_inline proc() -> Vec2 {
+	scope := &ctx.buffer[ctx.current_scope]
+	return Vec2 {
+		max(f32(0), scope.size.x - scope.cursor.x),
+		max(f32(0), scope.size.y - scope.cursor.y),
+	}
+}
+
+get_visible_rect :: proc() -> [4]f32 {
+	child := get_scope()
+	parent := get_parent_scope()
+
+	left := max(child.pos.x, parent.offset.x)
+	top := max(child.pos.y, parent.offset.y)
+	right := min(child.pos.x + child.size.x, parent.offset.x + parent.size.x)
+	bottom := min(child.pos.y + child.size.y, parent.offset.y + parent.size.y)
+
+	return [4]f32 {
+		left - parent.offset.x,
+		top - parent.offset.y,
+		max(0, right - left),
+		max(0, bottom - top),
+	}
+}
+
+is_visible :: proc() -> bool {
+	child := get_scope()
+	parent := get_parent_scope()
+	return(
+		!(child.pos.x + child.size.x <= parent.offset.x ||
+			child.pos.x >= parent.offset.x + parent.size.x ||
+			child.pos.y + child.size.y <= parent.offset.y ||
+			child.pos.y >= parent.offset.y + parent.size.y) \
+	)
+}
+
+get_anchor :: proc(anchor: Anchor) -> (Vec2, bool) #optional_ok {
+	child := get_scope()
+	if child.parent == -1 do return {}, false
+
+	visible := get_visible_rect()
+	if visible[2] <= 0 || visible[3] <= 0 do return {}, false
+
+	parent := get_parent_scope()
+	x := parent.screen_pos.x + visible.x
+	y := parent.screen_pos.y + visible.y
+
+	w := visible[2]
+	h := visible[3]
+
+	switch anchor {
+	case .Top_Left:
+		return {x, y}, true
+	case .Top:
+		return {x + w * 0.5, y}, true
+	case .Top_Right:
+		return {x + w, y}, true
+
+	case .Left:
+		return {x, y + h * 0.5}, true
+	case .Center:
+		return {x + w * 0.5, y + h * 0.5}, true
+	case .Right:
+		return {x + w, y + h * 0.5}, true
+
+	case .Bottom_Left:
+		return {x, y + h}, true
+	case .Bottom:
+		return {x + w * 0.5, y + h}, true
+	case .Bottom_Right:
+		return {x + w, y + h}, true
+	}
+
+	return {}, false
 }
 
