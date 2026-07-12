@@ -1,6 +1,7 @@
 package ui
 
 import "core:math"
+
 intersect_rects :: proc(a, b: Rect) -> Rect {
 	ix1 := max(a[0], b[0])
 	iy1 := max(a[1], b[1])
@@ -81,7 +82,24 @@ end_scope :: proc() {
 }
 
 @(deferred_none = end_scope)
-scope :: proc(size: Vec2) {
-	begin_scope(size)
+scope :: proc(size: Vec2, flags: Scope_Flags = {}) {
+	begin_scope(size, flags)
+}
+
+bind :: proc(interest: Interest, ptr: rawptr) {
+	assert(ctx.current_scope != -1, "invalid scope")
+
+	if ptr == nil do return
+
+	scope := get_scope()
+	scope.interests += {interest}
+	scope.interests_ptrs[interest] = ptr
+
+	#partial switch interest {
+	case .Scroll_X:
+		scope.offset.x = (^f32)(ptr)^
+	case .Scroll_Y:
+		scope.offset.y = (^f32)(ptr)^
+	}
 }
 

@@ -5,29 +5,62 @@ import "core:c"
 import "core:mem"
 import rl "vendor:raylib"
 
-main :: proc() {
-	callbacks := ui.Callbacks {
-		draw_rect = proc(x, y, w, h: f32, color: ui.Color) {
-			rl.DrawRectangle(
-				(c.int)(x),
-				(c.int)(y),
-				(c.int)(w),
-				(c.int)(h),
-				transmute(rl.Color)(color),
-			)
-		},
-		enable_scissors = proc(x, y, w, h: i32) {
-			rl.BeginScissorMode(x, y, w, h)
-		},
-		disable_scissors = proc() {
-			rl.EndScissorMode()
-		},
-	}
+CALLBACKS :: ui.Callbacks {
+	get_mouse_pos = proc() -> ui.Vec2 {
+		return transmute(ui.Vec2)(rl.GetMousePosition())
+	},
+	get_mouse_wheel = proc() -> ui.Vec2 {
+		return transmute(ui.Vec2)(rl.GetMouseWheelMoveV())
+	},
+	//
+	is_mouse_pressed = proc(btn: ui.Mouse_Button) -> bool {
+		return rl.IsMouseButtonPressed(transmute(rl.MouseButton)(btn))
+	},
+	is_mouse_down = proc(btn: ui.Mouse_Button) -> bool {
+		return rl.IsMouseButtonDown(transmute(rl.MouseButton)(btn))
+	},
+	is_mouse_released = proc(btn: ui.Mouse_Button) -> bool {
+		return rl.IsMouseButtonReleased(transmute(rl.MouseButton)(btn))
+	},
+	is_mouse_up = proc(btn: ui.Mouse_Button) -> bool {
+		return rl.IsMouseButtonUp(transmute(rl.MouseButton)(btn))
+	},
+	is_key_pressed = proc(key: ui.Keyboard_Key) -> bool {
+		return rl.IsKeyPressed(transmute(rl.KeyboardKey)(key))
+	},
+	is_key_down = proc(key: ui.Keyboard_Key) -> bool {
+		return rl.IsKeyDown(transmute(rl.KeyboardKey)(key))
+	},
+	is_key_released = proc(key: ui.Keyboard_Key) -> bool {
+		return rl.IsKeyReleased(transmute(rl.KeyboardKey)(key))
+	},
+	is_key_up = proc(key: ui.Keyboard_Key) -> bool {
+		return rl.IsKeyUp(transmute(rl.KeyboardKey)(key))
+	},
+	//
+	draw_rect = proc(x, y, w, h: f32, color: ui.Color) {
+		rl.DrawRectangle(
+			(c.int)(x),
+			(c.int)(y),
+			(c.int)(w),
+			(c.int)(h),
+			transmute(rl.Color)(color),
+		)
+	},
+	enable_scissors = proc(x, y, w, h: i32) {
+		rl.BeginScissorMode(x, y, w, h)
+	},
+	disable_scissors = proc() {
+		rl.EndScissorMode()
+	},
+}
 
-	ui.init(callbacks, 1024, 8 * mem.Megabyte)
+main :: proc() {
+	ui.init(CALLBACKS, 1024, 8 * mem.Megabyte)
 	defer ui.deinit()
 
-	rl.InitWindow(800, 600, "UI")
+	rl.SetConfigFlags({.WINDOW_RESIZABLE})
+	rl.InitWindow(1024, 720, "UI")
 	defer rl.CloseWindow()
 
 	for !rl.WindowShouldClose() {
@@ -39,14 +72,18 @@ main :: proc() {
 		ui.begin_frame()
 		defer ui.end_frame()
 
-		// simple()
-		// row()
-		wrap()
+		w, h := rl.GetScreenWidth(), rl.GetScreenHeight()
+		col := ui.col({f32(w), f32(h)}, {{.Flex, 1}, {.Flex, 1}, {.Flex, 1}}, 32)
+		if ui.next(&col) do simple()
+		if ui.next(&col) do row()
+		if ui.next(&col) do wrap()
 	}
 }
 
+is_hovered := false
+
 simple :: proc() {
-	ui.scope({100, 100})
+	ui.scope({100, 100}, {.Clip})
 	ui.draw_rect(0, 0, 800, 600, transmute(ui.Color)(rl.RED))
 
 	scope := ui.get_scope()
@@ -54,15 +91,18 @@ simple :: proc() {
 	scope.offset += {25, 25}
 
 	ui.scope({50, 50})
-	ui.draw_rect(0, 0, 800, 600, transmute(ui.Color)(rl.GREEN))
+	ui.bind(.Hovered, &is_hovered)
+
+	color := is_hovered ? rl.GREEN : rl.MAGENTA
+	ui.draw_rect(0, 0, 800, 600, transmute(ui.Color)(color))
 }
 
 row :: proc() {
-	ui.scope({400, 100})
+	ui.scope(ui.get_available_size())
 	size := ui.get_available_size()
 	ui.draw_rect(0, 0, size.x, size.y, transmute(ui.Color)(rl.GRAY))
 
-	row := ui.row({400, 100}, {{.Absolute, 80}, {.Flex, 1}}, gap = 10, padding = {10, 10, 10, 10})
+	row := ui.row(size, {{.Absolute, 80}, {.Flex, 1}}, gap = 10, padding = {10, 10, 10, 10})
 
 	if ui.next(&row) {
 		child_size := ui.get_available_size()
@@ -88,7 +128,7 @@ row :: proc() {
 }
 
 wrap :: proc() {
-	ui.scope({400, 140})
+	ui.scope(ui.get_available_size())
 	size := ui.get_available_size()
 	ui.draw_rect(0, 0, size.x, size.y, transmute(ui.Color)(rl.GRAY))
 
