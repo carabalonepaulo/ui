@@ -126,6 +126,8 @@ get_available_size :: #force_inline proc() -> Vec2 {
 
 get_visible_rect :: proc() -> [4]f32 {
 	child := get_scope()
+	if child.parent == -1 do return [4]f32{0, 0, child.size.x, child.size.y}
+
 	parent := get_parent_scope()
 
 	left := max(child.pos.x, parent.offset.x)
@@ -141,15 +143,9 @@ get_visible_rect :: proc() -> [4]f32 {
 	}
 }
 
-is_visible :: proc() -> bool {
+is_visible :: #force_inline proc() -> bool {
 	child := get_scope()
-	parent := get_parent_scope()
-	return(
-		!(child.pos.x + child.size.x <= parent.offset.x ||
-			child.pos.x >= parent.offset.x + parent.size.x ||
-			child.pos.y + child.size.y <= parent.offset.y ||
-			child.pos.y >= parent.offset.y + parent.size.y) \
-	)
+	return child.clip.z > 0 && child.clip.w > 0
 }
 
 get_anchor :: proc(anchor: Anchor) -> (Vec2, bool) #optional_ok {

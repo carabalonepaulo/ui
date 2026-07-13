@@ -108,6 +108,8 @@ Context :: struct {
 	memory:          []u8,
 	arena:           mem.Arena,
 	arena_allocator: mem.Allocator,
+	//
+	store:           Store,
 }
 
 Anchor :: enum {

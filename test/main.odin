@@ -3,8 +3,8 @@ package test
 import "../ui"
 import "core:c"
 import "core:fmt"
-import "core:math"
 import "core:mem"
+import "core:strings"
 import rl "vendor:raylib"
 
 CALLBACKS :: ui.Callbacks {
@@ -81,14 +81,15 @@ main :: proc() {
 	}
 }
 
-is_hovered := false
-is_pressed := false
-is_pressed_out := false
-is_released := false
-is_released_out := false
-is_hover_popup := false
-
-popup_visible := false
+Simple_State :: struct {
+	is_hovered:      bool,
+	is_pressed:      bool,
+	is_pressed_out:  bool,
+	is_released:     bool,
+	is_released_out: bool,
+	is_hover_popup:  bool,
+	popup_visible:   bool,
+}
 
 simple :: proc() {
 	ui.scope({100, 100}, {.Clip})
@@ -98,33 +99,35 @@ simple :: proc() {
 	scope.cursor += {75, 75}
 	scope.offset += {25, 25}
 
-	ui.scope({50, 50})
-	ui.bind(.Hovered, &is_hovered)
-	ui.bind(.Pressed, &is_pressed)
-	ui.bind(.Pressed_Out, &is_pressed_out)
-	ui.bind(.Released, &is_released)
-	ui.bind(.Released_Out, &is_released_out)
+	state := ui.get(ui.id("simple_state"), Simple_State)
 
-	color := is_hovered ? rl.GREEN : rl.MAGENTA
+	ui.scope({50, 50})
+	ui.bind(.Hovered, &state.is_hovered)
+	ui.bind(.Pressed, &state.is_pressed)
+	ui.bind(.Pressed_Out, &state.is_pressed_out)
+	ui.bind(.Released, &state.is_released)
+	ui.bind(.Released_Out, &state.is_released_out)
+
+	color := state.is_hovered ? rl.GREEN : rl.MAGENTA
 	ui.draw_rect(0, 0, 800, 600, transmute(ui.Color)(color))
 
-	if is_hovered do popup_visible = true
+	if state.is_hovered do state.popup_visible = true
 
-	if popup_visible {
+	if state.popup_visible {
 		anchor := ui.get_anchor(.Bottom_Left)
-		ui.popup_with_poly(anchor, {100, 100}, rl.RED, proc(color: rl.Color) {
-			ui.bind(.Hovered, &is_hover_popup)
+		ui.popup_with_poly(anchor, {100, 100}, state, proc(state: ^Simple_State) {
+			ui.bind(.Hovered, &state.is_hover_popup)
 			size := ui.get_available_size()
-			color := is_hover_popup ? color : rl.PURPLE
+			color := state.is_hover_popup ? rl.RED : rl.PURPLE
 			ui.draw_rect(0, 0, size.x, size.y, transmute(ui.Color)(color))
 		})
-		if !is_hover_popup && !is_hovered do popup_visible = false
+		if !state.is_hover_popup && !state.is_hovered do state.popup_visible = false
 	}
 
-	if is_pressed do fmt.println("is pressed / hover =", is_hovered)
-	if is_pressed_out do fmt.println("is pressed out / hover =", is_hovered)
-	if is_released do fmt.println("is released / hover =", is_hovered)
-	if is_released_out do fmt.println("is released out / hover =", is_hovered)
+	if state.is_pressed do fmt.println("is pressed / hover =", state.is_hovered)
+	if state.is_pressed_out do fmt.println("is pressed out / hover =", state.is_hovered)
+	if state.is_released do fmt.println("is released / hover =", state.is_hovered)
+	if state.is_released_out do fmt.println("is released out / hover =", state.is_hovered)
 }
 
 row :: proc() {

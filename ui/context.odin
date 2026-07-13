@@ -21,10 +21,13 @@ init_context :: proc(callbacks: Callbacks, cap: int, frame_memory: int) -> bool 
 	queue.init(&ctx.deferred_pre)
 	queue.init(&ctx.deferred_post)
 
+	init_store(&ctx.store)
+
 	return true
 }
 
 deinit_context :: proc() {
+	deinit_store(&ctx.store)
 	delete(ctx.interest_buffer)
 	delete(ctx.buffer)
 	queue.destroy(&ctx.deferred_pre)
@@ -46,6 +49,7 @@ end_frame :: proc() {
 	process_input()
 	execute_deferred(&ctx.deferred_post)
 
+	evict()
 	mem.free_all(ctx.arena_allocator)
 }
 
