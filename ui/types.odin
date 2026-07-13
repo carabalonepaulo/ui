@@ -96,6 +96,7 @@ Scope :: struct {
 }
 
 Context :: struct {
+	diagnostics:     Diagnostics,
 	callbacks:       Callbacks,
 	current_scope:   int,
 	scope_count:     int,

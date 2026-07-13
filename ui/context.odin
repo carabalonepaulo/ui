@@ -2,8 +2,10 @@ package ui
 
 import "core:container/queue"
 import "core:mem"
+import "core:time"
 
 ctx: Context
+frame_start: time.Time
 
 init_context :: proc(callbacks: Callbacks, cap: int, frame_memory: int) -> bool {
 	memory, alloc_err := mem.alloc_bytes(frame_memory)
@@ -38,6 +40,7 @@ deinit_context :: proc() {
 }
 
 begin_frame :: proc() {
+	frame_start = time.now()
 	ctx.current_scope = -1
 	ctx.scope_count = 0
 }
@@ -45,12 +48,29 @@ begin_frame :: proc() {
 end_frame :: proc() {
 	assert(ctx.current_scope == -1)
 
-	execute_deferred(&ctx.deferred_pre)
-	process_input()
-	execute_deferred(&ctx.deferred_post)
+	{
+		scope_timer(&ctx.diagnostics.deferred_pre)
+		execute_deferred(&ctx.deferred_pre)
+	}
 
-	evict()
+	{
+		scope_timer(&ctx.diagnostics.input)
+		process_input()
+	}
+
+	{
+		scope_timer(&ctx.diagnostics.deferred_post)
+		execute_deferred(&ctx.deferred_post)
+	}
+
+	{
+		scope_timer(&ctx.diagnostics.evict)
+		evict()
+	}
+
 	mem.free_all(ctx.arena_allocator)
+
+	ctx.diagnostics.frame = time.since(frame_start)
 }
 
 @(deferred_none = end_frame)
