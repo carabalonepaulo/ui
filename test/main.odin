@@ -8,6 +8,13 @@ import "core:strings"
 import rl "vendor:raylib"
 
 CALLBACKS :: ui.Callbacks {
+	get_delta_time = proc() -> f64 {
+		return rl.GetTime()
+	},
+	get_default_font = proc() -> ui.Font {
+		return 0
+	},
+	//
 	get_mouse_pos = proc() -> ui.Vec2 {
 		return transmute(ui.Vec2)(rl.GetMousePosition())
 	},
@@ -49,6 +56,12 @@ CALLBACKS :: ui.Callbacks {
 			transmute(rl.Color)(color),
 		)
 	},
+	draw_text = proc(font: ui.Font, text: string, x, y, size, spacing: f32, color: ui.Color) {
+		default := rl.GetFontDefault()
+		text_cstr := rl.TextFormat("%.*s", i32(len(text)), raw_data(text))
+		rl.DrawTextEx(default, text_cstr, {x, y}, size, spacing, transmute(rl.Color)(color))
+	},
+	//
 	enable_scissors = proc(x, y, w, h: i32) {
 		rl.BeginScissorMode(x, y, w, h)
 	},
@@ -74,11 +87,23 @@ main :: proc() {
 		ui.frame()
 
 		w, h := rl.GetScreenWidth(), rl.GetScreenHeight()
+		ui.scope({f32(w), f32(h)})
 		col := ui.col({f32(w), f32(h)}, {{.Flex, 1}, {.Flex, 1}, {.Flex, 1}}, 32)
+		// if ui.next(&col) do profiler()
 		if ui.next(&col) do simple()
 		if ui.next(&col) do row()
 		if ui.next(&col) do wrap()
+
+		debug := ui.get(ui.id("debug"), bool, true)
+		if rl.IsKeyPressed(.D) do debug^ = !(debug^)
+		if debug^ do ui.popup({0, 0}, {f32(w), f32(h)}, ui.profiler)
+		// return
 	}
+}
+
+profiler :: proc() {
+	size := ui.get_available_size()
+	ui.profiler()
 }
 
 Simple_State :: struct {
@@ -120,6 +145,7 @@ simple :: proc() {
 			size := ui.get_available_size()
 			color := state.is_hover_popup ? rl.RED : rl.PURPLE
 			ui.draw_rect(0, 0, size.x, size.y, transmute(ui.Color)(color))
+			ui.draw_text(0, "hello", 0, 0, 20, 1, transmute(ui.Color)(rl.BLACK))
 		})
 		if !state.is_hover_popup && !state.is_hovered do state.popup_visible = false
 	}

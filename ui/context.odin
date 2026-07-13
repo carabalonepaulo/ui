@@ -78,6 +78,10 @@ frame :: #force_inline proc() {
 	begin_frame()
 }
 
+get_temp_allocator :: #force_inline proc() -> mem.Allocator {
+	return ctx.arena_allocator
+}
+
 temp :: #force_inline proc($T: typeid) -> ^T {
 	return new(T, ctx.arena_allocator)
 }

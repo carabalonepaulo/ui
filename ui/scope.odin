@@ -1,5 +1,6 @@
 package ui
 
+import "core:fmt"
 import "core:math"
 
 intersect :: proc(a, b: Rect) -> Rect {
@@ -33,10 +34,6 @@ begin_scope :: proc(size: Vec2, flags: Scope_Flags = {}) {
 		scope.pos = parent.cursor
 		scope.parent = parent_idx
 
-		child_extended_boundary := parent.cursor + size
-		parent.content_size.x = max(parent.content_size.x, child_extended_boundary.x)
-		parent.content_size.y = max(parent.content_size.y, child_extended_boundary.y)
-
 		rect[0] = i32(scope.screen_pos[0])
 		rect[1] = i32(scope.screen_pos[1])
 		scope.clip = intersect(parent.clip, rect)
@@ -57,6 +54,23 @@ end_scope :: proc() {
 	assert(ctx.current_scope != -1, "end_scope() must be called after a begin_scope()")
 
 	child := &ctx.buffer[ctx.current_scope]
+
+	if child.parent != -1 {
+		parent := &ctx.buffer[child.parent]
+		effective_size := child.size
+
+		if .Propagate_Content_Size in child.flags {
+			effective_size = Vec2 {
+				max(child.size.x, child.content_size.x),
+				max(child.size.y, child.content_size.y),
+			}
+		}
+
+		child_extended_boundary := child.pos + effective_size
+		parent.content_size.x = max(parent.content_size.x, child_extended_boundary.x)
+		parent.content_size.y = max(parent.content_size.y, child_extended_boundary.y)
+	}
+
 	if .Clip in child.flags {
 		ctx.callbacks.disable_scissors()
 		parent := child.parent
@@ -106,6 +120,10 @@ bind :: proc(interest: Interest, ptr: rawptr) {
 	case .Scroll_Y:
 		scope.offset.y = (^f32)(ptr)^
 	}
+}
+
+get_scope_id :: #force_inline proc() -> int {
+	return ctx.current_scope
 }
 
 get_scope :: #force_inline proc() -> ^Scope {

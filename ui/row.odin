@@ -11,10 +11,12 @@ Layout_Item :: struct {
 }
 
 Row :: struct {
+	container_scope: int,
 	content_scope:   int,
 	current_child:   int,
 	computed_widths: []f32,
 	gap:             f32,
+	padding:         [4]f32,
 }
 
 begin_row :: proc(
@@ -25,6 +27,7 @@ begin_row :: proc(
 ) -> Row {
 	begin_scope(size)
 
+	container_scope := get_scope_id()
 	container := get_scope()
 	container.cursor = {padding[3], padding[0]}
 
@@ -33,10 +36,12 @@ begin_row :: proc(
 	begin_scope(usable_size)
 
 	state := Row {
+		container_scope = container_scope,
 		content_scope   = ctx.current_scope,
 		current_child   = 0,
 		computed_widths = make([]f32, len(items), ctx.arena_allocator),
 		gap             = gap,
+		padding         = padding,
 	}
 
 	total_gaps := f32(max(0, len(items) - 1)) * gap
@@ -89,11 +94,18 @@ row_next :: proc(state: ^Row) -> bool {
 	return true
 }
 
-end_row :: proc() {
-	container := &ctx.buffer[ctx.current_scope]
+end_row :: proc(row: Row) {
+	container := &ctx.buffer[row.container_scope]
+	content := &ctx.buffer[row.content_scope]
 	parent_idx := container.parent
 
 	end_scope()
+
+	container.content_size = {
+		content.content_size.x + row.padding[1] + row.padding[3],
+		content.content_size.y + row.padding[0] + row.padding[2],
+	}
+
 	end_scope()
 
 	if parent_idx != -1 {
@@ -102,7 +114,7 @@ end_row :: proc() {
 	}
 }
 
-@(deferred_none = end_row)
+@(deferred_out = end_row)
 row :: proc(
 	size: Vec2,
 	items: []Layout_Item,

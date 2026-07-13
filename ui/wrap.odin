@@ -1,16 +1,19 @@
 package ui
 
 Wrap :: struct {
-	content_scope: int,
-	cursor:        Vec2,
-	line_height:   f32,
-	usable_size:   Vec2,
-	gap:           Vec2,
+	container_scope: int,
+	content_scope:   int,
+	cursor:          Vec2,
+	line_height:     f32,
+	usable_size:     Vec2,
+	gap:             Vec2,
+	padding:         [4]f32,
 }
 
 begin_wrap :: proc(size: Vec2, gap: Vec2 = {0, 0}, padding: [4]f32 = {0, 0, 0, 0}) -> Wrap {
 	begin_scope(size)
 
+	container_scope := get_scope_id()
 	container := get_scope()
 	container.cursor = {padding[3], padding[0]}
 
@@ -19,11 +22,13 @@ begin_wrap :: proc(size: Vec2, gap: Vec2 = {0, 0}, padding: [4]f32 = {0, 0, 0, 0
 	begin_scope(usable_size, {.Clip})
 
 	return Wrap {
+		container_scope = container_scope,
 		content_scope = ctx.current_scope,
 		cursor = {},
 		line_height = 0,
 		usable_size = usable_size,
 		gap = gap,
+		padding = padding,
 	}
 }
 
@@ -55,11 +60,18 @@ wrap_next :: proc(state: ^Wrap, item_size: Vec2) -> bool {
 	return true
 }
 
-end_wrap :: proc() {
-	container := &ctx.buffer[ctx.current_scope]
+end_wrap :: proc(wrap: Wrap) {
+	container := &ctx.buffer[wrap.container_scope]
+	content := &ctx.buffer[wrap.content_scope]
 	parent_idx := container.parent
 
 	end_scope()
+
+	container.content_size = {
+		content.content_size.x + wrap.padding[1] + wrap.padding[3],
+		content.content_size.y + wrap.padding[0] + wrap.padding[2],
+	}
+
 	end_scope()
 
 	if parent_idx != -1 {
@@ -68,7 +80,7 @@ end_wrap :: proc() {
 	}
 }
 
-@(deferred_none = end_wrap)
+@(deferred_out = end_wrap)
 wrap :: proc(size: Vec2, gap: Vec2 = {0, 0}, padding: [4]f32 = {0, 0, 0, 0}) -> Wrap {
 	return begin_wrap(size, gap, padding)
 }

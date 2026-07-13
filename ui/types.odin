@@ -14,6 +14,9 @@ Rect :: [4]i32
 Color :: [4]u8
 
 Callbacks :: struct {
+	get_delta_time:    proc() -> f64,
+	get_default_font:  proc() -> Font,
+	//
 	load_texture:      proc(path: string) -> Texture,
 	load_font:         proc(path: string) -> Font,
 	//
@@ -31,7 +34,7 @@ Callbacks :: struct {
 	//
 	measure_text:      proc(font: Font, text: string) -> int,
 	//
-	draw_text:         proc(font: Font, x, y: f32, color: Color),
+	draw_text:         proc(font: Font, text: string, x, y, size, spacing: f32, color: Color),
 	draw_rect:         proc(x, y, w, h: f32, color: Color),
 	draw_texture:      proc(texture: Texture, src: [4]f32, dst: [4]f32, color: Color),
 	//
@@ -77,7 +80,7 @@ Interests :: bit_set[Interest]
 
 Scope_Flag :: enum {
 	Clip,
-	Popup,
+	Propagate_Content_Size,
 }
 
 Scope_Flags :: bit_set[Scope_Flag]

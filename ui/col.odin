@@ -1,10 +1,12 @@
 package ui
 
 Col :: struct {
+	container_scope:  int,
 	content_scope:    int,
 	current_child:    int,
 	computed_heights: []f32,
 	gap:              f32,
+	padding:          [4]f32,
 }
 
 begin_col :: proc(
@@ -13,8 +15,9 @@ begin_col :: proc(
 	gap: f32 = 0,
 	padding: [4]f32 = {0, 0, 0, 0},
 ) -> Col {
-	begin_scope(size)
+	begin_scope(size, {.Propagate_Content_Size})
 
+	container_scope := get_scope_id()
 	container := get_scope()
 	container.cursor = {padding[3], padding[0]}
 
@@ -23,10 +26,12 @@ begin_col :: proc(
 	begin_scope(usable_size)
 
 	state := Col {
+		container_scope  = container_scope,
 		content_scope    = ctx.current_scope,
 		current_child    = 0,
 		computed_heights = make([]f32, len(items), ctx.arena_allocator),
 		gap              = gap,
+		padding          = padding,
 	}
 
 	total_gaps := f32(max(0, len(items) - 1)) * gap
@@ -78,11 +83,18 @@ col_next :: proc(state: ^Col) -> bool {
 	return true
 }
 
-end_col :: proc() {
-	container := &ctx.buffer[ctx.current_scope]
+end_col :: proc(col: Col) {
+	container := &ctx.buffer[col.container_scope]
+	content := &ctx.buffer[col.content_scope]
 	parent_idx := container.parent
 
 	end_scope()
+
+	container.content_size = {
+		content.content_size.x + col.padding[1] + col.padding[3],
+		content.content_size.y + col.padding[0] + col.padding[2],
+	}
+
 	end_scope()
 
 	if parent_idx != -1 {
@@ -91,7 +103,7 @@ end_col :: proc() {
 	}
 }
 
-@(deferred_none = end_col)
+@(deferred_out = end_col)
 col :: proc(
 	size: Vec2,
 	items: []Layout_Item,

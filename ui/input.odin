@@ -11,6 +11,7 @@ process_input :: proc() {
 	mouse_left_down := ctx.callbacks.is_mouse_down(.Left)
 	mouse_left_released := ctx.callbacks.is_mouse_released(.Left)
 
+	hover_consumed := false
 	scroll_consumed := false
 	pressed_consumed := false
 	released_consumed := false
@@ -21,8 +22,9 @@ process_input :: proc() {
 		if scope.interests == {} do continue
 
 		if is_mouse_inside(scope, mouse_pos) {
-			if .Hovered in scope.interests {
+			if .Hovered in scope.interests && !hover_consumed {
 				set(i, .Hovered, true)
+				hover_consumed = true
 			}
 
 			if .Pressed in scope.interests {
