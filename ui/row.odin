@@ -17,15 +17,17 @@ Row :: struct {
 	computed_widths: []f32,
 	gap:             f32,
 	padding:         [4]f32,
+	fit:             Fit,
 }
 
 begin_row :: proc(
+	uid: Id,
 	size: Vec2,
 	items: []Layout_Item,
 	gap: f32 = 0,
 	padding: [4]f32 = {0, 0, 0, 0},
 ) -> Row {
-	begin_scope(size)
+	fit := begin_fit(id(uid, "fit"), size)
 
 	container_scope := get_scope_id()
 	container := get_scope()
@@ -42,6 +44,7 @@ begin_row :: proc(
 		computed_widths = make([]f32, len(items), ctx.arena_allocator),
 		gap             = gap,
 		padding         = padding,
+		fit             = fit,
 	}
 
 	total_gaps := f32(max(0, len(items) - 1)) * gap
@@ -106,7 +109,7 @@ end_row :: proc(row: Row) {
 		content.content_size.y + row.padding[0] + row.padding[2],
 	}
 
-	end_scope()
+	end_fit(row.fit)
 
 	if parent_idx != -1 {
 		parent := &ctx.buffer[parent_idx]
@@ -116,11 +119,12 @@ end_row :: proc(row: Row) {
 
 @(deferred_out = end_row)
 row :: proc(
+	uid: Id,
 	size: Vec2,
 	items: []Layout_Item,
 	gap: f32 = 0,
 	padding: [4]f32 = {0, 0, 0, 0},
 ) -> Row {
-	return begin_row(size, items, gap, padding)
+	return begin_row(uid, size, items, gap, padding)
 }
 

@@ -19,7 +19,7 @@ CALLBACKS :: ui.Callbacks {
 		return transmute(ui.Vec2)(rl.GetMousePosition())
 	},
 	get_mouse_wheel = proc() -> ui.Vec2 {
-		return transmute(ui.Vec2)(rl.GetMouseWheelMoveV())
+		return transmute(ui.Vec2)(rl.GetMouseWheelMoveV()) * 20
 	},
 	//
 	is_mouse_pressed = proc(btn: ui.Mouse_Button) -> bool {
@@ -88,16 +88,15 @@ main :: proc() {
 
 		w, h := rl.GetScreenWidth(), rl.GetScreenHeight()
 		ui.scope({f32(w), f32(h)})
-		col := ui.col({f32(w), f32(h)}, {{.Flex, 1}, {.Flex, 1}, {.Flex, 1}}, 32)
+		col := ui.col(ui.id("root"), {f32(w), f32(h)}, {{.Flex, 1}, {.Flex, 1}, {.Flex, 1}}, 32)
 		// if ui.next(&col) do profiler()
 		if ui.next(&col) do simple()
 		if ui.next(&col) do row()
 		if ui.next(&col) do wrap()
 
-		debug := ui.get(ui.id("debug"), bool, true)
+		debug := ui.get(ui.id("debug"), bool, false)
 		if rl.IsKeyPressed(.D) do debug^ = !(debug^)
 		if debug^ do ui.popup({0, 0}, {f32(w), f32(h)}, ui.profiler)
-		// return
 	}
 }
 
@@ -161,13 +160,25 @@ row :: proc() {
 	size := ui.get_available_size()
 	ui.draw_rect(0, 0, size.x, size.y, transmute(ui.Color)(rl.GRAY))
 
-	row := ui.row(size, {{.Absolute, 80}, {.Flex, 1}}, gap = 10, padding = {10, 10, 10, 10})
+	row := ui.row(
+		ui.id("main/row"),
+		size,
+		{{.Absolute, 80}, {.Flex, 1}},
+		gap = 10,
+		padding = {10, 10, 10, 10},
+	)
 
 	if ui.next(&row) {
 		child_size := ui.get_available_size()
 		ui.draw_rect(0, 0, child_size.x, child_size.y, transmute(ui.Color)(rl.RED))
 
-		col := ui.col(child_size, {{.Flex, 1}, {.Flex, 2}}, 10, {10, 10, 10, 10})
+		col := ui.col(
+			ui.id("main/row", 1),
+			child_size,
+			{{.Flex, 1}, {.Flex, 2}},
+			10,
+			{10, 10, 10, 10},
+		)
 
 		if ui.next(&col) {
 			child_size := ui.get_available_size()
@@ -189,9 +200,15 @@ row :: proc() {
 wrap :: proc() {
 	ui.scope(ui.get_available_size())
 	size := ui.get_available_size()
-	ui.draw_rect(0, 0, size.x, size.y, transmute(ui.Color)(rl.GRAY))
 
-	w := ui.wrap(size, gap = {8, 8}, padding = {12, 12, 12, 12})
+	ui.fit(ui.id("main/wrap/fit"), {ui.AUTO, ui.AUTO})
+	rect_size := ui.get_size()
+	ui.draw_rect(0, 0, rect_size.x, rect_size.y, transmute(ui.Color)(rl.GRAY))
+
+	w := ui.wrap(ui.id("main/wrap"), size, gap = {8, 8}, padding = {12, 12, 12, 12})
+
+	scroll_y := ui.get(ui.id("main/wrap/scroll_y"), f32, 0.0)
+	ui.bind(.Scroll_Y, scroll_y)
 
 	item_sizes := []ui.Vec2 {
 		{70, 30},

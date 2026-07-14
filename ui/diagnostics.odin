@@ -24,7 +24,11 @@ end_scope_timer :: proc(out: ^time.Duration, start: time.Time) {
 profiler :: proc() {
 	Row :: struct {
 		label: string,
-		value: time.Duration,
+		value: union {
+			time.Duration,
+			int,
+			f32,
+		},
 	}
 
 	rows := []Row {
@@ -33,36 +37,42 @@ profiler :: proc() {
 		{"Deferred (Pre)", ctx.diagnostics.deferred_pre},
 		{"Deferred (Post)", ctx.diagnostics.deferred_post},
 		{"Evict", ctx.diagnostics.evict},
+		{"Scopes", ctx.scope_count},
 	}
 
 	font_size: f32 = 20
 	gap: f32 = 5
 	padding: f32 = 10
+	width: f32 = 280
 
-	h := get(id("internal/profiler/size"), f32, 0)
-	begin_scope({300, h^}, {.Clip})
-	container := get_scope()
+	fit(id("internal/profiler/fit"), {AUTO, AUTO}, {.Clip})
 
 	size := get_available_size()
-	draw_rect(0, 0, size.x, size.y, {67, 67, 67, 255})
+	draw_rect(0, 0, size.x, size.y, {67, 67, 67, 200})
 
-	c := begin_col(
-		size,
-		{
-			{.Absolute, font_size},
-			{.Absolute, font_size},
-			{.Absolute, font_size},
-			{.Absolute, font_size},
-			{.Absolute, font_size},
-		},
+	constraints, just_created := get(
+		id("internal/profiler/constraints"),
+		[]Layout_Item,
+		destroy = proc(constraints: ^[]Layout_Item) {delete(constraints^)},
+	)
+	if just_created {
+		slice := make([]Layout_Item, len(rows))
+		for i in 0 ..< len(slice) do slice[i] = {.Absolute, font_size}
+		constraints^ = slice
+	}
+
+	c := col(
+		id("internal/profiler/col"),
+		{width, AUTO},
+		constraints^,
 		gap = gap,
 		padding = {padding, padding, padding, padding},
 	)
-	parent_scope := get_scope()
 
-	for value in rows {
+	for value, i in rows {
 		if next(&c) {
-			r := row(get_available_size(), {{.Flex, 2}, {.Flex, 1}})
+			row_id := id("internal/profiler/row", i)
+			r := row(row_id, get_available_size(), {{.Flex, 2}, {.Flex, 1}})
 			if next(&r) do draw_text(0, value.label, 0, 0, font_size, 1, {0, 0, 0, 255})
 			if next(&r) {
 				text := fmt.aprintf("%v", value.value, allocator = get_temp_allocator())
@@ -70,10 +80,5 @@ profiler :: proc() {
 			}
 		}
 	}
-
-	end_col(c)
-	end_scope()
-
-	h^ = container.content_size.y
 }
 

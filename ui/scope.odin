@@ -55,6 +55,20 @@ end_scope :: proc() {
 
 	child := &ctx.buffer[ctx.current_scope]
 
+	if .Scroll_X in child.interests {
+		if ptr := (^f32)(ctx.interest_buffer[ctx.current_scope][.Scroll_X]); ptr != nil {
+			ptr^ = math.clamp(ptr^, 0, max(0, child.content_size.x - child.size.x))
+			child.offset.x = ptr^
+		}
+	}
+
+	if .Scroll_Y in child.interests {
+		if ptr := (^f32)(ctx.interest_buffer[ctx.current_scope][.Scroll_Y]); ptr != nil {
+			ptr^ = math.clamp(ptr^, 0, max(0, child.content_size.y - child.size.y))
+			child.offset.y = ptr^
+		}
+	}
+
 	if child.parent != -1 {
 		parent := &ctx.buffer[child.parent]
 		effective_size := child.size
@@ -134,8 +148,14 @@ get_parent_scope :: #force_inline proc() -> ^Scope {
 	return &ctx.buffer[ctx.buffer[ctx.current_scope].parent]
 }
 
-get_available_size :: #force_inline proc() -> Vec2 {
-	scope := &ctx.buffer[ctx.current_scope]
+get_size :: #force_inline proc(id := -1) -> Vec2 {
+	id := id == -1 ? ctx.current_scope : id
+	return ctx.buffer[id].size
+}
+
+get_available_size :: #force_inline proc(id := -1) -> Vec2 {
+	id := id == -1 ? ctx.current_scope : id
+	scope := &ctx.buffer[id]
 	return Vec2 {
 		max(f32(0), scope.size.x - scope.cursor.x),
 		max(f32(0), scope.size.y - scope.cursor.y),

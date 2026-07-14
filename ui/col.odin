@@ -1,5 +1,7 @@
 package ui
 
+AUTO :: -1
+
 Col :: struct {
 	container_scope:  int,
 	content_scope:    int,
@@ -7,15 +9,17 @@ Col :: struct {
 	computed_heights: []f32,
 	gap:              f32,
 	padding:          [4]f32,
+	fit:              Fit,
 }
 
 begin_col :: proc(
+	uid: Id,
 	size: Vec2,
 	items: []Layout_Item,
 	gap: f32 = 0,
 	padding: [4]f32 = {0, 0, 0, 0},
 ) -> Col {
-	begin_scope(size, {.Propagate_Content_Size})
+	fit := begin_fit(id(uid, "size"), size)
 
 	container_scope := get_scope_id()
 	container := get_scope()
@@ -32,6 +36,7 @@ begin_col :: proc(
 		computed_heights = make([]f32, len(items), ctx.arena_allocator),
 		gap              = gap,
 		padding          = padding,
+		fit              = fit,
 	}
 
 	total_gaps := f32(max(0, len(items) - 1)) * gap
@@ -95,7 +100,7 @@ end_col :: proc(col: Col) {
 		content.content_size.y + col.padding[0] + col.padding[2],
 	}
 
-	end_scope()
+	end_fit(col.fit)
 
 	if parent_idx != -1 {
 		parent := &ctx.buffer[parent_idx]
@@ -105,11 +110,12 @@ end_col :: proc(col: Col) {
 
 @(deferred_out = end_col)
 col :: proc(
+	uid: Id,
 	size: Vec2,
 	items: []Layout_Item,
 	gap: f32 = 0,
 	padding: [4]f32 = {0, 0, 0, 0},
 ) -> Col {
-	return begin_col(size, items, gap, padding)
+	return begin_col(uid, size, items, gap, padding)
 }
 
