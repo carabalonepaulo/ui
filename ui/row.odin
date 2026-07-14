@@ -17,7 +17,7 @@ Row :: struct {
 	computed_widths: []f32,
 	gap:             f32,
 	padding:         [4]f32,
-	fit:             Fit,
+	fit:             Maybe(Fit),
 }
 
 begin_row :: proc(
@@ -27,7 +27,12 @@ begin_row :: proc(
 	gap: f32 = 0,
 	padding: [4]f32 = {0, 0, 0, 0},
 ) -> Row {
-	fit := begin_fit(id(uid, "fit"), size)
+	fit: Maybe(Fit)
+	if size.x == AUTO {
+		fit = begin_fit(id(uid, "fit"), size)
+	} else {
+		begin_scope(size)
+	}
 
 	container_scope := get_scope_id()
 	container := get_scope()
@@ -109,7 +114,11 @@ end_row :: proc(row: Row) {
 		content.content_size.y + row.padding[0] + row.padding[2],
 	}
 
-	end_fit(row.fit)
+	if fit, ok := row.fit.(Fit); ok {
+		end_fit(fit)
+	} else {
+		end_scope()
+	}
 
 	if parent_idx != -1 {
 		parent := &ctx.buffer[parent_idx]

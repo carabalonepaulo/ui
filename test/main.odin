@@ -89,10 +89,9 @@ main :: proc() {
 		w, h := rl.GetScreenWidth(), rl.GetScreenHeight()
 		ui.scope({f32(w), f32(h)})
 		col := ui.col(ui.id("root"), {f32(w), f32(h)}, {{.Flex, 1}, {.Flex, 1}, {.Flex, 1}}, 32)
-		// if ui.next(&col) do profiler()
 		if ui.next(&col) do simple()
-		if ui.next(&col) do row()
 		if ui.next(&col) do wrap()
+		if ui.next(&col) do row()
 
 		debug := ui.get(ui.id("debug"), bool, false)
 		if rl.IsKeyPressed(.D) do debug^ = !(debug^)
@@ -200,10 +199,6 @@ row :: proc() {
 wrap :: proc() {
 	ui.scope(ui.get_available_size())
 	size := ui.get_available_size()
-
-	ui.fit(ui.id("main/wrap/fit"), {ui.AUTO, ui.AUTO})
-	rect_size := ui.get_size()
-	ui.draw_rect(0, 0, rect_size.x, rect_size.y, transmute(ui.Color)(rl.GRAY))
 
 	w := ui.wrap(ui.id("main/wrap"), size, gap = {8, 8}, padding = {12, 12, 12, 12})
 

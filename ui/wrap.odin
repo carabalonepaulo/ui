@@ -8,7 +8,6 @@ Wrap :: struct {
 	usable_size:     Vec2,
 	gap:             Vec2,
 	padding:         [4]f32,
-	fit:             Fit,
 }
 
 begin_wrap :: proc(
@@ -17,7 +16,7 @@ begin_wrap :: proc(
 	gap: Vec2 = {0, 0},
 	padding: [4]f32 = {0, 0, 0, 0},
 ) -> Wrap {
-	fit := begin_fit(uid, size)
+	begin_scope(size)
 
 	container_scope := get_scope_id()
 	container := get_scope()
@@ -35,7 +34,6 @@ begin_wrap :: proc(
 		usable_size = usable_size,
 		gap = gap,
 		padding = padding,
-		fit = fit,
 	}
 }
 
@@ -79,7 +77,7 @@ end_wrap :: proc(wrap: Wrap) {
 		content.content_size.y + wrap.padding[0] + wrap.padding[2],
 	}
 
-	end_fit(wrap.fit)
+	end_scope()
 
 	if parent_idx != -1 {
 		parent := &ctx.buffer[parent_idx]

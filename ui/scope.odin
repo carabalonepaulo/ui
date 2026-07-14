@@ -1,6 +1,5 @@
 package ui
 
-import "core:fmt"
 import "core:math"
 
 intersect :: proc(a, b: Rect) -> Rect {

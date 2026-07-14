@@ -38,6 +38,7 @@ profiler :: proc() {
 		{"Deferred (Post)", ctx.diagnostics.deferred_post},
 		{"Evict", ctx.diagnostics.evict},
 		{"Scopes", ctx.scope_count},
+		{"Store", len(ctx.store.entries)},
 	}
 
 	font_size: f32 = 20

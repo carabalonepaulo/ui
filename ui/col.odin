@@ -9,7 +9,7 @@ Col :: struct {
 	computed_heights: []f32,
 	gap:              f32,
 	padding:          [4]f32,
-	fit:              Fit,
+	fit:              Maybe(Fit),
 }
 
 begin_col :: proc(
@@ -19,7 +19,12 @@ begin_col :: proc(
 	gap: f32 = 0,
 	padding: [4]f32 = {0, 0, 0, 0},
 ) -> Col {
-	fit := begin_fit(id(uid, "size"), size)
+	fit: Maybe(Fit)
+	if size.y == AUTO {
+		fit = begin_fit(id(uid, "fit"), size)
+	} else {
+		begin_scope(size)
+	}
 
 	container_scope := get_scope_id()
 	container := get_scope()
@@ -100,7 +105,11 @@ end_col :: proc(col: Col) {
 		content.content_size.y + col.padding[0] + col.padding[2],
 	}
 
-	end_fit(col.fit)
+	if fit, ok := col.fit.(Fit); ok {
+		end_fit(fit)
+	} else {
+		end_scope()
+	}
 
 	if parent_idx != -1 {
 		parent := &ctx.buffer[parent_idx]
