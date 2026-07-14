@@ -139,12 +139,14 @@ get_scope_id :: #force_inline proc() -> int {
 	return ctx.current_scope
 }
 
-get_scope :: #force_inline proc() -> ^Scope {
-	return &ctx.buffer[ctx.current_scope]
+get_scope :: #force_inline proc(id := -1) -> ^Scope {
+	id := id == -1 ? ctx.current_scope : id
+	return &ctx.buffer[id]
 }
 
-get_parent_scope :: #force_inline proc() -> ^Scope {
-	return &ctx.buffer[ctx.buffer[ctx.current_scope].parent]
+get_parent_scope :: #force_inline proc(id := -1) -> ^Scope {
+	id := id == -1 ? ctx.current_scope : id
+	return &ctx.buffer[ctx.buffer[id].parent]
 }
 
 get_size :: #force_inline proc(id := -1) -> Vec2 {
@@ -161,11 +163,11 @@ get_available_size :: #force_inline proc(id := -1) -> Vec2 {
 	}
 }
 
-get_visible_rect :: proc() -> [4]f32 {
-	child := get_scope()
+get_visible_rect :: proc(id := -1) -> [4]f32 {
+	child := get_scope(id)
 	if child.parent == -1 do return [4]f32{0, 0, child.size.x, child.size.y}
 
-	parent := get_parent_scope()
+	parent := get_parent_scope(id)
 
 	left := max(child.pos.x, parent.offset.x)
 	top := max(child.pos.y, parent.offset.y)
@@ -180,19 +182,19 @@ get_visible_rect :: proc() -> [4]f32 {
 	}
 }
 
-is_visible :: #force_inline proc() -> bool {
-	child := get_scope()
+is_visible :: #force_inline proc(id := -1) -> bool {
+	child := get_scope(id)
 	return child.clip.z > 0 && child.clip.w > 0
 }
 
-get_anchor :: proc(anchor: Anchor) -> (Vec2, bool) #optional_ok {
-	child := get_scope()
+get_anchor :: proc(anchor: Anchor, id := -1) -> (Vec2, bool) #optional_ok {
+	child := get_scope(id)
 	if child.parent == -1 do return {}, false
 
-	visible := get_visible_rect()
+	visible := get_visible_rect(id)
 	if visible[2] <= 0 || visible[3] <= 0 do return {}, false
 
-	parent := get_parent_scope()
+	parent := get_parent_scope(id)
 	x := parent.screen_pos.x + visible.x
 	y := parent.screen_pos.y + visible.y
 

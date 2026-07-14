@@ -82,16 +82,28 @@ main :: proc() {
 		rl.BeginDrawing()
 		defer rl.EndDrawing()
 
-		rl.ClearBackground(rl.WHITE)
+		rl.ClearBackground({150, 150, 150, 255})
 
 		ui.frame()
 
-		w, h := rl.GetScreenWidth(), rl.GetScreenHeight()
-		ui.scope({f32(w), f32(h)})
-		col := ui.col(ui.id("root"), {f32(w), f32(h)}, {{.Flex, 1}, {.Flex, 1}, {.Flex, 1}}, 32)
-		if ui.next(&col) do simple()
-		if ui.next(&col) do wrap()
-		if ui.next(&col) do row()
+		w, h := f32(rl.GetScreenWidth()), f32(rl.GetScreenHeight())
+		ui.scope({w, h})
+
+		r := ui.row(ui.id("root"), {w, h}, {{.Flex, 1}, {.Flex, 1}}, 32)
+
+		if ui.next(&r) {
+			c := ui.col(
+				ui.id("root/col"),
+				ui.get_available_size(),
+				{{.Flex, 1}, {.Flex, 1}, {.Flex, 1}},
+				32,
+			)
+			if ui.next(&c) do simple()
+			if ui.next(&c) do wrap()
+			if ui.next(&c) do row()
+		}
+
+		if ui.next(&r) do center()
 
 		debug := ui.get(ui.id("debug"), bool, false)
 		if rl.IsKeyPressed(.D) do debug^ = !(debug^)
@@ -162,7 +174,7 @@ row :: proc() {
 	row := ui.row(
 		ui.id("main/row"),
 		size,
-		{{.Absolute, 80}, {.Flex, 1}},
+		{{.Flex, 1}, {.Flex, 5}},
 		gap = 10,
 		padding = {10, 10, 10, 10},
 	)
@@ -227,5 +239,23 @@ wrap :: proc() {
 			ui.draw_rect(0, 0, child_size.x, child_size.y, transmute(ui.Color)(color))
 		}
 	}
+}
+
+center :: proc() {
+	size := ui.get_available_size()
+	ui.draw_rect(0, 0, size.x, size.y, {0, 0, 0, 255})
+
+	{
+		c := ui.center(ui.id("root/center"))
+		if ui.next(&c) {
+			ui.scope({100, 100})
+			size := ui.get_available_size()
+			ui.draw_rect(0, 0, size.x, size.y, {200, 200, 200, 255})
+		}
+	}
+
+	ui.scope({32, 32})
+	size = ui.get_available_size()
+	ui.draw_rect(0, 0, size.x, size.y, {200, 0, 20, 255})
 }
 
