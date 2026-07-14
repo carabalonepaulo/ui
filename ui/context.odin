@@ -17,6 +17,7 @@ init_context :: proc(callbacks: Callbacks, cap: int, frame_memory: int) -> bool 
 
 	ctx.callbacks = callbacks
 	ctx.interest_buffer = make([][Interest]rawptr, cap)
+	ctx.touched_buffer = make([]Interests, cap)
 	ctx.buffer = make([]Scope, cap)
 	ctx.current_scope = -1
 
@@ -114,5 +115,21 @@ deferred_with_poly :: proc(kind: Deferred_Kind, arg: $T, fn: proc(arg: T)) {
 	}
 
 	deferred(kind, tmp, fn)
+}
+
+get_used_memory :: proc() -> (total: int) {
+	total += len(ctx.buffer) * size_of(Scope)
+	total += len(ctx.touched_buffer) * size_of(Interests)
+	total += len(ctx.memory)
+
+	total += len(ctx.interest_buffer) * size_of([]rawptr)
+	for sub_slice in ctx.interest_buffer {
+		total += len(sub_slice) * size_of(rawptr)
+	}
+
+	total += queue.cap(ctx.deferred_pre) * size_of(Deferred)
+	total += queue.cap(ctx.deferred_post) * size_of(Deferred)
+
+	return
 }
 

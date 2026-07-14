@@ -58,7 +58,8 @@ CALLBACKS :: ui.Callbacks {
 	},
 	draw_text = proc(font: ui.Font, text: string, x, y, size, spacing: f32, color: ui.Color) {
 		default := rl.GetFontDefault()
-		text_cstr := rl.TextFormat("%.*s", i32(len(text)), raw_data(text))
+		text_cstr := strings.clone_to_cstring(text, ui.get_temp_allocator())
+		// text_cstr := rl.TextFormat("%.*s", i32(len(text)), raw_data(text))
 		rl.DrawTextEx(default, text_cstr, {x, y}, size, spacing, transmute(rl.Color)(color))
 	},
 	//
@@ -71,7 +72,7 @@ CALLBACKS :: ui.Callbacks {
 }
 
 main :: proc() {
-	ui.init(CALLBACKS, 1024, 8 * mem.Megabyte)
+	ui.init(CALLBACKS, 1_000_000, 8 * mem.Megabyte)
 	defer ui.deinit()
 
 	rl.SetConfigFlags({.WINDOW_RESIZABLE})
@@ -241,16 +242,29 @@ wrap :: proc() {
 	}
 }
 
+Center_State :: struct {
+	parent_hover: bool,
+	child_hover:  bool,
+}
+
 center :: proc() {
+	state := ui.get(ui.id("root/center/state"), Center_State)
+	ui.bind(.Hovered, &state.parent_hover)
+
 	size := ui.get_available_size()
-	ui.draw_rect(0, 0, size.x, size.y, {0, 0, 0, 255})
+	bg_color := state.parent_hover ? ui.Color({0, 0, 0, 255}) : ui.Color({50, 50, 50, 255})
+	ui.draw_rect(0, 0, size.x, size.y, bg_color)
 
 	{
 		c := ui.center(ui.id("root/center"))
 		if ui.next(&c) {
-			ui.scope({100, 100})
+			ui.scope({100, 100}, {})
+			ui.bind(.Hovered, &state.child_hover)
+
 			size := ui.get_available_size()
-			ui.draw_rect(0, 0, size.x, size.y, {200, 200, 200, 255})
+			bg_color :=
+				state.child_hover ? ui.Color({200, 200, 200, 255}) : ui.Color({200, 50, 50, 255})
+			ui.draw_rect(0, 0, size.x, size.y, bg_color)
 		}
 	}
 

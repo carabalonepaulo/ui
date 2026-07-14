@@ -1,6 +1,7 @@
 package ui
 
 import "core:math"
+import "core:slice"
 
 @(private)
 process_input :: proc() {
@@ -10,6 +11,8 @@ process_input :: proc() {
 	mouse_left_pressed := ctx.callbacks.is_mouse_pressed(.Left)
 	mouse_left_down := ctx.callbacks.is_mouse_down(.Left)
 	mouse_left_released := ctx.callbacks.is_mouse_released(.Left)
+
+	slice.zero(ctx.touched_buffer[:ctx.scope_count])
 
 	hover_consumed := false
 	scroll_consumed := false
@@ -22,25 +25,29 @@ process_input :: proc() {
 		if scope.interests == {} do continue
 
 		if is_mouse_inside(scope, mouse_pos) {
-			if .Hovered in scope.interests && !hover_consumed {
-				set(i, .Hovered, true)
-				hover_consumed = true
+			if .Hovered in scope.interests {
+				if !hover_consumed {
+					propagate(i, .Hovered, true)
+					hover_consumed = true
+				} else if !(.Hovered in ctx.touched_buffer[i]) {
+					set(i, .Hovered, false)
+				}
 			}
 
 			if .Pressed in scope.interests {
 				if mouse_left_pressed && !pressed_consumed {
-					set(i, .Pressed, true)
+					propagate(i, .Pressed, true)
 					pressed_consumed = true
-				} else {
+				} else if !(.Pressed in ctx.touched_buffer[i]) {
 					set(i, .Pressed, false)
 				}
 			}
 
 			if .Released in scope.interests {
 				if mouse_left_released && !released_consumed {
-					set(i, .Released, true)
+					propagate(i, .Released, true)
 					released_consumed = true
-				} else {
+				} else if !(.Released in ctx.touched_buffer[i]) {
 					set(i, .Released, false)
 				}
 			}
@@ -81,6 +88,20 @@ get :: #force_inline proc(idx: int, interest: Interest, $T: typeid) -> T {
 set :: #force_inline proc(idx: int, interest: Interest, value: $T) {
 	ptr := (^T)(ctx.interest_buffer[idx][interest])
 	if ptr != nil do ptr^ = value
+}
+
+@(private = "file")
+propagate :: proc(id: int, interest: Interest, value: $T) {
+	curr := id
+	for curr != -1 {
+		scope := &ctx.buffer[curr]
+		if interest in scope.interests {
+			set(curr, interest, value)
+			ctx.touched_buffer[curr] += {interest}
+			if !(.Pass_Through in scope.flags) do break
+		}
+		curr = scope.parent
+	}
 }
 
 @(private = "file")

@@ -18,8 +18,9 @@ Entry :: struct {
 
 @(private)
 Store :: struct {
-	frame:   u64,
-	entries: map[Id]Entry,
+	frame:    u64,
+	entries:  map[Id]Entry,
+	used_mem: u64,
 }
 
 @(private)
@@ -62,6 +63,7 @@ get :: proc(
 	}
 	if val, ok := default.(T); ok do (^T)(ptr)^ = val
 	ctx.store.entries[id] = entry
+	ctx.store.used_mem += u64(entry.size)
 
 	return (^T)(entry.ptr), true
 }
@@ -73,6 +75,7 @@ destroy_entry :: proc(id: Id) {
 		entry.destroy(entry.ptr)
 	}
 	mem.free_with_size(entry.ptr, entry.size)
+	ctx.store.used_mem -= u64(entry.size)
 }
 
 exists :: #force_inline proc(id: Id) -> bool {

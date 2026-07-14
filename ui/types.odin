@@ -81,6 +81,7 @@ Interests :: bit_set[Interest]
 Scope_Flag :: enum {
 	Clip,
 	Propagate_Content_Size,
+	Pass_Through,
 }
 
 Scope_Flags :: bit_set[Scope_Flag]
@@ -105,6 +106,7 @@ Context :: struct {
 	scope_count:     int,
 	buffer:          []Scope,
 	interest_buffer: [][Interest]rawptr,
+	touched_buffer:  []Interests,
 	//
 	deferred_pre:    queue.Queue(Deferred),
 	deferred_post:   queue.Queue(Deferred),
