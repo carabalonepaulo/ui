@@ -19,7 +19,7 @@ CALLBACKS :: ui.Callbacks {
 		return transmute(ui.Vec2)(rl.GetMousePosition())
 	},
 	get_mouse_wheel = proc() -> ui.Vec2 {
-		return transmute(ui.Vec2)(rl.GetMouseWheelMoveV()) * 1000
+		return transmute(ui.Vec2)(rl.GetMouseWheelMoveV()) * 100
 	},
 	//
 	is_mouse_pressed = proc(btn: ui.Mouse_Button) -> bool {
@@ -105,9 +105,10 @@ main :: proc() {
 
 		if ui.next(&r) {
 			size := ui.get_available_size()
-			c := ui.col(ui.id("root/right/col"), size, {{.Flex, 1}, {.Flex, 1}})
+			c := ui.col(ui.id("root/right/col"), size, {{.Flex, 1}, {.Flex, 1}, {.Flex, 1}})
 			if ui.next(&c) do center()
 			if ui.next(&c) do huge_list()
+			if ui.next(&c) do list()
 		}
 
 		debug := ui.get(ui.id("debug"), bool, false)
@@ -329,5 +330,37 @@ huge_list :: proc() {
 			)
 		}
 	}
+}
+
+list :: proc() {
+	count := 100_000
+
+	State :: struct {
+		text:     string,
+		is_hover: bool,
+	}
+
+	destroy_items := proc(items: ^[]State) {
+		for item in items^ do delete(item.text)
+		delete(items^)
+	}
+	items, just_created := ui.get(ui.id("list/items"), []State, destroy = destroy_items)
+	if just_created {
+		slice := make([]State, count)
+		for i in 0 ..< count do slice[i].text = fmt.aprintf("%v", i)
+		items^ = slice
+	}
+
+	ui.list(ui.id("list"), ui.get_available_size(), count, 20, items, proc(i: int, ud: rawptr) {
+		items := (^[]State)(ud)
+		ui.bind(.Hovered, &items[i].is_hover)
+
+		color: ui.Color = i % 2 == 0 ? {255, 255, 255, 255} : {100, 100, 100, 255}
+		color = items[i].is_hover ? {255, 0, 0, 255} : color
+
+		size := ui.get_available_size()
+		ui.draw_rect(0, 0, size.x, size.y, color)
+		ui.draw_text(0, items[i].text, 0, 0, 20, 1, {0, 0, 0, 255})
+	})
 }
 
