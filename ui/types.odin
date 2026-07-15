@@ -32,7 +32,7 @@ Callbacks :: struct {
 	is_key_released:   proc(key: Keyboard_Key) -> bool,
 	is_key_up:         proc(key: Keyboard_Key) -> bool,
 	//
-	measure_text:      proc(font: Font, text: string) -> int,
+	measure_text:      proc(font: Font, text: string, font_size: f32, spacing: f32) -> Vec2,
 	//
 	draw_text:         proc(font: Font, text: string, x, y, size, spacing: f32, color: Color),
 	draw_rect:         proc(x, y, w, h: f32, color: Color),

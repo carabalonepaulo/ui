@@ -7,6 +7,8 @@ import "core:mem"
 import "core:strings"
 import rl "vendor:raylib"
 
+scroll_modifier: f32 = 5
+
 CALLBACKS :: ui.Callbacks {
 	get_delta_time = proc() -> f64 {
 		return rl.GetTime()
@@ -14,12 +16,17 @@ CALLBACKS :: ui.Callbacks {
 	get_default_font = proc() -> ui.Font {
 		return 0
 	},
+	measure_text = proc(font: ui.Font, text: string, font_size: f32, spacing: f32) -> ui.Vec2 {
+		default := rl.GetFontDefault()
+		text_cstr := strings.clone_to_cstring(text, ui.get_temp_allocator())
+		return transmute(ui.Vec2)(rl.MeasureTextEx(default, text_cstr, font_size, spacing))
+	},
 	//
 	get_mouse_pos = proc() -> ui.Vec2 {
 		return transmute(ui.Vec2)(rl.GetMousePosition())
 	},
 	get_mouse_wheel = proc() -> ui.Vec2 {
-		return transmute(ui.Vec2)(rl.GetMouseWheelMoveV()) * 5
+		return transmute(ui.Vec2)(rl.GetMouseWheelMoveV()) * scroll_modifier
 	},
 	//
 	is_mouse_pressed = proc(btn: ui.Mouse_Button) -> bool {
@@ -71,7 +78,7 @@ CALLBACKS :: ui.Callbacks {
 }
 
 main :: proc() {
-	ui.init(CALLBACKS, 15_000, 8 * mem.Megabyte)
+	ui.init(CALLBACKS, 1_005_000, 8 * mem.Megabyte)
 	defer ui.deinit()
 
 	rl.SetConfigFlags({.WINDOW_RESIZABLE})
@@ -89,32 +96,124 @@ main :: proc() {
 		w, h := f32(rl.GetScreenWidth()), f32(rl.GetScreenHeight())
 		ui.scope({w, h})
 
-		r := ui.row(ui.id("root"), {w, h}, {{.Flex, 1}, {.Flex, 1}}, 32)
+		tabs([]Tab{{"Layout", layout_tab}, {"Text", text_tab}})
 
-		if ui.next(&r) {
-			c := ui.col(
-				ui.id("root/col"),
-				ui.get_available_size(),
-				{{.Flex, 1}, {.Flex, 1}, {.Flex, 1}},
-				32,
-			)
-			if ui.next(&c) do simple()
-			if ui.next(&c) do wrap()
-			if ui.next(&c) do row()
-		}
-
-		if ui.next(&r) {
-			size := ui.get_available_size()
-			c := ui.col(ui.id("root/right/col"), size, {{.Flex, 1}, {.Flex, 1}, {.Flex, 1}})
-			if ui.next(&c) do center()
-			if ui.next(&c) do huge_list()
-			if ui.next(&c) do list()
-		}
 
 		debug := ui.get(ui.id("debug"), bool, false)
 		if rl.IsKeyPressed(.D) do debug^ = !(debug^)
 		if debug^ do ui.popup({0, 0}, {f32(w), f32(h)}, ui.profiler)
 	}
+}
+
+Tab :: struct {
+	text: string,
+	comp: proc(),
+}
+
+tabs :: proc(tabs: []Tab) {
+	State :: struct {
+		hover:   bool,
+		pressed: bool,
+	}
+
+	font_color := ui.Color{255, 255, 255, 200}
+	font_size: f32 = 20
+	spacing: f32 = 1
+	padding: f32 = 10
+
+	tab_bg_color: ui.Color = {31, 31, 31, 255}
+	tab_bg_hover_color: ui.Color = {41, 41, 41, 255}
+
+	content_bg_color: ui.Color = {21, 21, 21, 255}
+
+	size := ui.get_available_size()
+	ui.draw_rect(0, 0, size.x, size.y, tab_bg_color)
+
+	current := ui.get(ui.id("root/tabs/current"), int, 0)
+
+	destroy_constraints := proc(constraints: ^[]ui.Layout_Item) {delete(constraints^)}
+	constraints, just_created := ui.get(
+		ui.id("root/tabs/constraints"),
+		[]ui.Layout_Item,
+		destroy = destroy_constraints,
+	)
+	if just_created {
+		slice := make([]ui.Layout_Item, len(tabs))
+		for i in 0 ..< len(slice) {
+			text_size := ui.ctx.callbacks.measure_text(0, tabs[i].text, font_size, spacing)
+			slice[i] = {.Absolute, text_size.x + padding * 2}
+		}
+		constraints^ = slice
+	}
+
+	destroy_state := proc(hover: ^[]State) {delete(hover^)}
+	state, state_just_created := ui.get(ui.id("root/tabs/hover"), []State, destroy = destroy_state)
+	if state_just_created do state^ = make([]State, len(tabs))
+
+	c := ui.col(ui.id("root/tabs"), size, {{.Absolute, font_size + (padding * 2)}, {.Flex, 1}})
+	if ui.next(&c) {
+		size := ui.get_available_size()
+		r := ui.row(ui.id("root/tabs/row"), size, constraints^)
+		for i in 0 ..< len(tabs) {
+			if ui.next(&r) {
+				ui.bind(.Hovered, &state[i].hover)
+				ui.bind(.Pressed, &state[i].pressed)
+
+				size := ui.get_available_size()
+				ui.draw_rect(
+					0,
+					0,
+					size.x,
+					size.y,
+					state[i].hover ? tab_bg_hover_color : tab_bg_color,
+				)
+				ui.draw_text(0, tabs[i].text, padding, padding, font_size, spacing, font_color)
+			}
+		}
+	}
+
+	if ui.next(&c) {
+		size := ui.get_available_size()
+		ui.draw_rect(0, 0, size.x, size.y, content_bg_color)
+		tabs[current^].comp()
+	}
+
+	for i in 0 ..< len(tabs) {
+		if state[i].pressed {
+			current^ = i
+			break
+		}
+	}
+}
+
+layout_tab :: proc() {
+	size := ui.get_available_size()
+	r := ui.row(ui.id("root"), size, {{.Flex, 1}, {.Flex, 1}}, 32)
+
+	if ui.next(&r) {
+		c := ui.col(
+			ui.id("root/col"),
+			ui.get_available_size(),
+			{{.Flex, 1}, {.Flex, 1}, {.Flex, 1}},
+			32,
+		)
+		if ui.next(&c) do simple()
+		if ui.next(&c) do wrap()
+		if ui.next(&c) do row()
+	}
+
+	if ui.next(&r) {
+		size := ui.get_available_size()
+		c := ui.col(ui.id("root/right/col"), size, {{.Flex, 1}, {.Flex, 1}, {.Flex, 1}})
+		if ui.next(&c) do center()
+		if ui.next(&c) do huge_list()
+		if ui.next(&c) do list()
+	}
+}
+
+text_tab :: proc() {
+	size := ui.get_available_size()
+	// ui.draw_rect(0, 0, size.x, size.y, {0, 255, 0, 255})
 }
 
 profiler :: proc() {
@@ -314,6 +413,8 @@ huge_list :: proc() {
 			if !ui.is_visible() do continue
 			ui.bind(.Hovered, &states[i])
 
+			if states[i] do scroll_modifier = 100
+
 			color: ui.Color = i % 2 == 0 ? {255, 255, 255, 255} : {100, 100, 100, 255}
 			color = states[i] ? {255, 0, 0, 255} : color
 
@@ -351,23 +452,17 @@ list :: proc() {
 		items^ = slice
 	}
 
-	ui.list_with_poly(
-		ui.id("list"),
-		ui.get_available_size(),
-		count,
-		20,
-		10,
-		items,
-		proc(i: int, items: ^[]State) {
-			ui.bind(.Hovered, &items[i].is_hover)
+	ui.list_with_poly(ui.id("list"), ui.get_available_size(), count, 20, 10, items, proc(i: int, items: ^[]State) {
+		ui.bind(.Hovered, &items[i].is_hover)
 
-			color: ui.Color = i % 2 == 0 ? {255, 255, 255, 255} : {100, 100, 100, 255}
-			color = items[i].is_hover ? {255, 0, 0, 255} : color
+		if items[i].is_hover do scroll_modifier = 5
 
-			size := ui.get_available_size()
-			ui.draw_rect(0, 0, size.x, size.y, color)
-			ui.draw_text(0, items[i].text, 0, 0, 20, 1, {0, 0, 0, 255})
-		},
-	)
+		color: ui.Color = i % 2 == 0 ? {255, 255, 255, 255} : {100, 100, 100, 255}
+		color = items[i].is_hover ? {255, 0, 0, 255} : color
+
+		size := ui.get_available_size()
+		ui.draw_rect(0, 0, size.x, size.y, color)
+		ui.draw_text(0, items[i].text, 0, 0, 20, 1, {0, 0, 0, 255})
+	})
 }
 
