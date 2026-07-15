@@ -1,29 +1,7 @@
 package ui
 
-import "core:fmt"
 import "core:strings"
 import "core:unicode/utf8"
-
-@(private = "file")
-Command :: struct {
-	kind:  enum {
-		Draw,
-		New_Line,
-	},
-	value: int,
-}
-
-Text_Align_X :: enum {
-	Left,
-	Center,
-	Right,
-}
-
-Text_Align_Y :: enum {
-	Top,
-	Middle,
-	Bottom,
-}
 
 Text_Wrap :: enum {
 	None,
@@ -32,8 +10,6 @@ Text_Wrap :: enum {
 }
 
 Text_Options :: struct {
-	align_x:        Text_Align_X,
-	align_y:        Text_Align_Y,
 	wrap:           Text_Wrap,
 	letter_spacing: f32,
 	line_spacing:   f32,
