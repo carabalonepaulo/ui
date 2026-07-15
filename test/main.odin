@@ -19,7 +19,7 @@ CALLBACKS :: ui.Callbacks {
 		return transmute(ui.Vec2)(rl.GetMousePosition())
 	},
 	get_mouse_wheel = proc() -> ui.Vec2 {
-		return transmute(ui.Vec2)(rl.GetMouseWheelMoveV()) * 100
+		return transmute(ui.Vec2)(rl.GetMouseWheelMoveV()) * 5
 	},
 	//
 	is_mouse_pressed = proc(btn: ui.Mouse_Button) -> bool {
@@ -351,16 +351,23 @@ list :: proc() {
 		items^ = slice
 	}
 
-	ui.list(ui.id("list"), ui.get_available_size(), count, 20, items, proc(i: int, ud: rawptr) {
-		items := (^[]State)(ud)
-		ui.bind(.Hovered, &items[i].is_hover)
+	ui.list_with_poly(
+		ui.id("list"),
+		ui.get_available_size(),
+		count,
+		20,
+		10,
+		items,
+		proc(i: int, items: ^[]State) {
+			ui.bind(.Hovered, &items[i].is_hover)
 
-		color: ui.Color = i % 2 == 0 ? {255, 255, 255, 255} : {100, 100, 100, 255}
-		color = items[i].is_hover ? {255, 0, 0, 255} : color
+			color: ui.Color = i % 2 == 0 ? {255, 255, 255, 255} : {100, 100, 100, 255}
+			color = items[i].is_hover ? {255, 0, 0, 255} : color
 
-		size := ui.get_available_size()
-		ui.draw_rect(0, 0, size.x, size.y, color)
-		ui.draw_text(0, items[i].text, 0, 0, 20, 1, {0, 0, 0, 255})
-	})
+			size := ui.get_available_size()
+			ui.draw_rect(0, 0, size.x, size.y, color)
+			ui.draw_text(0, items[i].text, 0, 0, 20, 1, {0, 0, 0, 255})
+		},
+	)
 }
 

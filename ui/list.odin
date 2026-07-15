@@ -5,6 +5,7 @@ list :: proc(
 	size: Vec2,
 	items_count: int,
 	item_height: f32,
+	gap: f32,
 	ud: rawptr,
 	item: proc(i: int, ud: rawptr),
 ) {
@@ -14,17 +15,41 @@ list :: proc(
 	container := get_scope()
 	bind(.Scroll_Y, offset)
 
-	skip := max(int(offset^ / item_height), 0)
-	visible := int(size.y / item_height) + 1
-	container.cursor += {0, f32(skip) * item_height}
+	pitch := item_height + gap
+	skip := max(int(offset^ / pitch), 0)
+	visible := int(size.y / pitch) + 1
+	container.cursor += {0, f32(skip) * pitch}
 
 	draw_rect(0, 0, size.x, size.y, {30, 80, 30, 255})
 	for i in skip ..< min(skip + visible, items_count) {
 		scope({size.x, item_height})
 		item(i, ud)
-		container.cursor += {0, item_height}
+		container.cursor += {0, pitch}
 	}
 
-	container.content_size = {0, f32(items_count * items_count)}
+	container.content_size = {0, max(f32(items_count) * pitch - gap, 0)}
+}
+
+List_State :: struct($T: typeid) {
+	ud: T,
+	fn: proc(i: int, ud: T),
+}
+
+list_with_poly :: proc(
+	uid: Id,
+	size: Vec2,
+	items_count: int,
+	item_height: f32,
+	gap: f32,
+	ud: $T,
+	item: proc(i: int, ud: T),
+) {
+	ptr := temp(List_State(T))
+	ptr^ = List_State(T){ud, item}
+
+	list(uid, size, items_count, item_height, gap, ptr, proc(i: int, ud: rawptr) {
+		ud := (^List_State(T))(ud)
+		ud.fn(i, ud.ud)
+	})
 }
 
