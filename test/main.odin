@@ -19,7 +19,7 @@ CALLBACKS :: ui.Callbacks {
 		return transmute(ui.Vec2)(rl.GetMousePosition())
 	},
 	get_mouse_wheel = proc() -> ui.Vec2 {
-		return transmute(ui.Vec2)(rl.GetMouseWheelMoveV()) * 20
+		return transmute(ui.Vec2)(rl.GetMouseWheelMoveV()) * 1000
 	},
 	//
 	is_mouse_pressed = proc(btn: ui.Mouse_Button) -> bool {
@@ -59,7 +59,6 @@ CALLBACKS :: ui.Callbacks {
 	draw_text = proc(font: ui.Font, text: string, x, y, size, spacing: f32, color: ui.Color) {
 		default := rl.GetFontDefault()
 		text_cstr := strings.clone_to_cstring(text, ui.get_temp_allocator())
-		// text_cstr := rl.TextFormat("%.*s", i32(len(text)), raw_data(text))
 		rl.DrawTextEx(default, text_cstr, {x, y}, size, spacing, transmute(rl.Color)(color))
 	},
 	//
@@ -72,11 +71,11 @@ CALLBACKS :: ui.Callbacks {
 }
 
 main :: proc() {
-	ui.init(CALLBACKS, 1_000_000, 8 * mem.Megabyte)
+	ui.init(CALLBACKS, 15_000, 8 * mem.Megabyte)
 	defer ui.deinit()
 
 	rl.SetConfigFlags({.WINDOW_RESIZABLE})
-	rl.InitWindow(1024, 720, "UI")
+	rl.InitWindow(1280, 720, "UI")
 	defer rl.CloseWindow()
 
 	for !rl.WindowShouldClose() {
@@ -104,7 +103,12 @@ main :: proc() {
 			if ui.next(&c) do row()
 		}
 
-		if ui.next(&r) do center()
+		if ui.next(&r) {
+			size := ui.get_available_size()
+			c := ui.col(ui.id("root/right/col"), size, {{.Flex, 1}, {.Flex, 1}})
+			if ui.next(&c) do center()
+			if ui.next(&c) do huge_list()
+		}
 
 		debug := ui.get(ui.id("debug"), bool, false)
 		if rl.IsKeyPressed(.D) do debug^ = !(debug^)
@@ -258,7 +262,7 @@ center :: proc() {
 	{
 		c := ui.center(ui.id("root/center"))
 		if ui.next(&c) {
-			ui.scope({100, 100}, {})
+			ui.scope({100, 100}, {.Pass_Through})
 			ui.bind(.Hovered, &state.child_hover)
 
 			size := ui.get_available_size()
@@ -271,5 +275,59 @@ center :: proc() {
 	ui.scope({32, 32})
 	size = ui.get_available_size()
 	ui.draw_rect(0, 0, size.x, size.y, {200, 0, 20, 255})
+}
+
+huge_list :: proc() {
+	size := ui.get_available_size()
+	ui.draw_rect(0, 0, size.x, size.y, {40, 40, 40, 255})
+
+	count := 10_000
+
+	states, states_just_created := ui.get(
+		ui.id("huge_list/states"),
+		[]bool,
+		destroy = proc(states: ^[]bool) {delete(states^)},
+	)
+	if states_just_created do states^ = make([]bool, count)
+
+	constraints, just_created := ui.get(
+		ui.id("huge_list/constraints"),
+		[]ui.Layout_Item,
+		destroy = proc(constraints: ^[]ui.Layout_Item) {delete(constraints^)},
+	)
+	if just_created {
+		list := make([]ui.Layout_Item, count)
+		for i in 0 ..< count do list[i] = {.Absolute, 20}
+		constraints^ = list
+	}
+
+	ui.scope(size, {.Clip})
+	offset := ui.get(ui.id("huge_list/offset"), f32)
+	ui.bind(.Scroll_Y, offset)
+
+	c := ui.col(ui.id("huge_list/col"), {size.x, ui.AUTO}, constraints^)
+	for i in 0 ..< count {
+		if ui.next(&c) {
+			size := ui.get_available_size()
+
+			if !ui.is_visible() do continue
+			ui.bind(.Hovered, &states[i])
+
+			color: ui.Color = i % 2 == 0 ? {255, 255, 255, 255} : {100, 100, 100, 255}
+			color = states[i] ? {255, 0, 0, 255} : color
+
+			ui.draw_rect(0, 0, size.x, size.y, color)
+			scope := ui.get_scope()
+			ui.draw_text(
+				0,
+				fmt.aprintf("%d - %v", i, scope.clip, allocator = ui.get_temp_allocator()),
+				0,
+				0,
+				20,
+				1,
+				{0, 0, 0, 255},
+			)
+		}
+	}
 }
 

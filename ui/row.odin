@@ -34,6 +34,8 @@ begin_row :: proc(
 		begin_scope(size)
 	}
 
+	size := get_size()
+
 	container_scope := get_scope_id()
 	container := get_scope()
 	container.cursor = {padding[3], padding[0]}
