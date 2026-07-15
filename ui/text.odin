@@ -2,6 +2,7 @@ package ui
 
 import "core:unicode/utf8"
 
+@(private = "file")
 Cached_Token :: struct {
 	start, end: int,
 	size:       Vec2,
@@ -153,7 +154,7 @@ get_token_cache :: proc(uid: Id, text: string, opts: ^Text_Options) -> []Cached_
 
 			if start < idx {
 				word_size := measure_text(text[start:idx], opts)
-				cached := Cached_Token{start, idx, word_size, word_size.x + space_size.x}
+				cached := Cached_Token{start, idx, word_size, word_size.x}
 				append(&sizes, cached)
 			}
 		} else {
