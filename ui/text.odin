@@ -48,6 +48,8 @@ text :: proc(uid: Id, size: Vec2, text: string, opts: Text_Options) {
 	text := text
 	opts := opts
 
+	if size.x == AUTO do opts.wrap = .None
+
 	is_fit := size.x == AUTO || size.y == AUTO
 	fit: Fit
 
@@ -67,6 +69,7 @@ text :: proc(uid: Id, size: Vec2, text: string, opts: Text_Options) {
 
 	if (text_size.x < container_size.x && text_size.y < container_size.y) || opts.wrap == .None {
 		draw_text(opts.font, text, 0, 0, opts.font_size, opts.letter_spacing, opts.font_color)
+		container.content_size = text_size
 		return
 	}
 
@@ -87,6 +90,7 @@ text :: proc(uid: Id, size: Vec2, text: string, opts: Text_Options) {
 			draw(container, &available, letter, letter_size, step, &opts)
 		}
 	}
+	container.content_size = container.cursor + {0, opts.font_size}
 }
 
 @(private = "file")

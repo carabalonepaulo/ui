@@ -227,8 +227,8 @@ text_tab :: proc() {
 	}
 	ui.text(
 		ui.id("tab/text"),
-		ui.get_available_size(),
-		"Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+		{200, ui.AUTO},
+		"Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc posuere sed ex dignissim luctus. Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Aliquam ac elementum lorem.",
 		opts,
 	)
 }
