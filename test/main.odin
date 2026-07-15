@@ -80,6 +80,27 @@ CALLBACKS :: ui.Callbacks {
 }
 
 main :: proc() {
+	track: mem.Tracking_Allocator
+	mem.tracking_allocator_init(&track, context.allocator)
+	context.allocator = mem.tracking_allocator(&track)
+	defer {
+		if len(track.allocation_map) > 0 {
+			fmt.println("[track] leaks")
+			for _, value in track.allocation_map {
+				fmt.printfln("- %v bytes at %v", value.size, value.location)
+			}
+		}
+
+		if len(track.bad_free_array) > 0 {
+			fmt.println("[track] bad free")
+			for value in track.bad_free_array {
+				fmt.printfln("- %v", value.location)
+			}
+		}
+
+		mem.tracking_allocator_destroy(&track)
+	}
+
 	ui.init(CALLBACKS, 1_005_000, 8 * mem.Megabyte)
 	defer ui.deinit()
 
@@ -213,12 +234,12 @@ layout_tab :: proc() {
 }
 
 text_tab :: proc() {
-	ui.scope({250, 100})
+	ui.scope({210, 100})
 	size := ui.get_available_size()
 	ui.draw_rect(0, 0, size.x, size.y, {255, 255, 255, 255})
 
 	opts := ui.Text_Options {
-		wrap           = .Word,
+		wrap           = .Letter,
 		letter_spacing = 1,
 		line_spacing   = 10,
 		font           = 0,
