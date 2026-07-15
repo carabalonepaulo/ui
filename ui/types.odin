@@ -48,8 +48,8 @@ Deferred_Kind :: enum {
 }
 
 Deferred :: struct {
-	fn: proc(ud: rawptr),
 	ud: rawptr,
+	fn: proc(ud: rawptr),
 }
 
 Popup :: struct {

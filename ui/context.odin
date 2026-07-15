@@ -96,7 +96,7 @@ execute_deferred :: proc(q: ^queue.Queue(Deferred)) {
 }
 
 deferred :: #force_inline proc(kind: Deferred_Kind, ud: rawptr, fn: proc(ud: rawptr)) {
-	queue.enqueue(kind == .Pre ? &ctx.deferred_pre : &ctx.deferred_post, Deferred{fn, ud})
+	queue.enqueue(kind == .Pre ? &ctx.deferred_pre : &ctx.deferred_post, Deferred{ud, fn})
 }
 
 Deferred_Arg :: struct($T: typeid) {
