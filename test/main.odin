@@ -7,6 +7,8 @@ import "core:mem"
 import "core:strings"
 import rl "vendor:raylib"
 
+FIRST_TAB :: 1
+
 scroll_modifier: f32 = 5
 
 CALLBACKS :: ui.Callbacks {
@@ -98,7 +100,6 @@ main :: proc() {
 
 		tabs([]Tab{{"Layout", layout_tab}, {"Text", text_tab}})
 
-
 		debug := ui.get(ui.id("debug"), bool, false)
 		if rl.IsKeyPressed(.D) do debug^ = !(debug^)
 		if debug^ do ui.popup({0, 0}, {f32(w), f32(h)}, ui.profiler)
@@ -129,7 +130,7 @@ tabs :: proc(tabs: []Tab) {
 	size := ui.get_available_size()
 	ui.draw_rect(0, 0, size.x, size.y, tab_bg_color)
 
-	current := ui.get(ui.id("root/tabs/current"), int, 0)
+	current := ui.get(ui.id("root/tabs/current"), int, FIRST_TAB)
 
 	destroy_constraints := proc(constraints: ^[]ui.Layout_Item) {delete(constraints^)}
 	constraints, just_created := ui.get(
@@ -212,8 +213,24 @@ layout_tab :: proc() {
 }
 
 text_tab :: proc() {
+	ui.scope({200, 100})
 	size := ui.get_available_size()
-	// ui.draw_rect(0, 0, size.x, size.y, {0, 255, 0, 255})
+	ui.draw_rect(0, 0, size.x, size.y, {255, 255, 255, 255})
+
+	opts := ui.Text_Options {
+		wrap           = .Word,
+		letter_spacing = 1,
+		line_spacing   = 10,
+		font           = 0,
+		font_size      = 20,
+		font_color     = {0, 0, 0, 255},
+	}
+	ui.text(
+		ui.id("tab/text"),
+		ui.get_available_size(),
+		"Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+		opts,
+	)
 }
 
 profiler :: proc() {
