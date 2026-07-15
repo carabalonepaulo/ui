@@ -3,6 +3,17 @@ package ui
 import "core:strings"
 import "core:unicode/utf8"
 
+Cached_Word :: struct {
+	size: Vec2,
+	step: f32,
+}
+
+Cached_Letter :: struct {
+	start, end: int,
+	size:       Vec2,
+	step:       f32,
+}
+
 Text_Wrap :: enum {
 	None,
 	Word,
@@ -50,19 +61,62 @@ text :: proc(uid: Id, size: Vec2, text: string, opts: Text_Options) {
 	}
 
 	available := container_size.x
+
 	if opts.wrap == .Word {
+		destroy_cache := proc(cache: ^[dynamic]Cached_Word) {delete(cache^)}
+		cache, just_created := get(
+			id(uid, text, "cache/word"),
+			[dynamic]Cached_Word,
+			destroy = destroy_cache,
+		)
+
+		if just_created {
+			sizes := make([dynamic]Cached_Word)
+			iter := &text
+			for word in strings.split_iterator(iter, " ") {
+				word, word_size, step := measure_text(word, &opts, space_size)
+				append(&sizes, Cached_Word{word_size, step})
+			}
+			cache^ = sizes
+		}
+
 		iter := &text
+		count := 0
+
 		for word in strings.split_iterator(iter, " ") {
-			word, word_size, step := measure_text(word, &opts, space_size)
-			draw(container, &available, word, word_size, step, &opts)
+			value := cache^[count]
+			draw(container, &available, word, value.size, value.step, &opts)
+			count += 1
 		}
 	} else {
-		idx := 0
-		for idx < len(text) {
-			rune, rune_size := utf8.decode_rune(text[idx:])
-			idx += rune_size
+		destroy_cache := proc(cache: ^[dynamic]Cached_Letter) {delete(cache^)}
+		cache, just_created := get(
+			id(uid, text, "cache/letter"),
+			[dynamic]Cached_Letter,
+			destroy = destroy_cache,
+		)
 
-			letter, letter_size, step := measure_rune(rune, &opts, space_size)
+		if just_created {
+			sizes := make([dynamic]Cached_Letter)
+
+			idx := 0
+			for idx < len(text) {
+				rune, rune_size := utf8.decode_rune(text[idx:])
+				idx += rune_size
+
+				letter_size, step := measure_rune(rune, &opts, space_size)
+				append(&sizes, Cached_Letter{idx - rune_size, idx, letter_size, step})
+			}
+
+			cache^ = sizes
+		}
+
+		letters := cache^
+		for i in 0 ..< len(letters) {
+			letter := text[letters[i].start:letters[i].end]
+			letter_size := letters[i].size
+			step := letters[i].step
+
 			draw(container, &available, letter, letter_size, step, &opts)
 		}
 	}
@@ -76,7 +130,7 @@ measure_text :: proc(text: string, opts: ^Text_Options, space_size: Vec2) -> (st
 }
 
 @(private = "file")
-measure_rune :: proc(c: rune, opts: ^Text_Options, space_size: Vec2) -> (string, Vec2, f32) {
+measure_rune :: proc(c: rune, opts: ^Text_Options, space_size: Vec2) -> (Vec2, f32) {
 	letter := utf8.runes_to_string({c}, get_temp_allocator())
 	letter_size := ctx.callbacks.measure_text(
 		opts.font,
@@ -84,7 +138,7 @@ measure_rune :: proc(c: rune, opts: ^Text_Options, space_size: Vec2) -> (string,
 		opts.font_size,
 		opts.letter_spacing,
 	)
-	return letter, letter_size, letter_size.x + opts.letter_spacing
+	return letter_size, letter_size.x + opts.letter_spacing
 }
 
 @(private = "file")

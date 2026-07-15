@@ -218,7 +218,7 @@ text_tab :: proc() {
 	ui.draw_rect(0, 0, size.x, size.y, {255, 255, 255, 255})
 
 	opts := ui.Text_Options {
-		wrap           = .Word,
+		wrap           = .Letter,
 		letter_spacing = 1,
 		line_spacing   = 10,
 		font           = 0,
