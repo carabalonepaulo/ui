@@ -61,6 +61,7 @@ text :: proc(uid: Id, size: Vec2, text: string, opts: Text_Options) {
 	}
 
 	available := container_size.x
+	max_width: f32 = 0
 
 	if opts.wrap == .Word {
 		destroy_cache := proc(cache: ^[dynamic]Cached_Word) {delete(cache^)}
@@ -85,7 +86,7 @@ text :: proc(uid: Id, size: Vec2, text: string, opts: Text_Options) {
 
 		for word in strings.split_iterator(iter, " ") {
 			value := cache^[count]
-			draw(container, &available, word, value.size, value.step, &opts)
+			draw(container, &available, &max_width, word, value.size, value.step, &opts)
 			count += 1
 		}
 	} else {
@@ -117,10 +118,10 @@ text :: proc(uid: Id, size: Vec2, text: string, opts: Text_Options) {
 			letter_size := letters[i].size
 			step := letters[i].step
 
-			draw(container, &available, letter, letter_size, step, &opts)
+			draw(container, &available, &max_width, letter, letter_size, step, &opts)
 		}
 	}
-	container.content_size = container.cursor + {0, opts.font_size}
+	container.content_size = {max_width, container.cursor.y + opts.font_size}
 }
 
 @(private = "file")
@@ -145,12 +146,14 @@ measure_rune :: proc(c: rune, opts: ^Text_Options, space_size: Vec2) -> (Vec2, f
 draw :: proc(
 	container: ^Scope,
 	available: ^f32,
+	max_width: ^f32,
 	text: string,
 	text_size: Vec2,
 	step: f32,
 	opts: ^Text_Options,
 ) {
 	if available^ - text_size.x < 0 {
+		if container.cursor.x > max_width^ do max_width^ = container.cursor.x
 		container.cursor.y += opts.font_size + opts.line_spacing
 		container.cursor.x = 0
 		available^ = container.size.x

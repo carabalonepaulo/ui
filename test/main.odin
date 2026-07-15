@@ -213,12 +213,12 @@ layout_tab :: proc() {
 }
 
 text_tab :: proc() {
-	ui.scope({200, 100})
+	ui.scope({250, 100})
 	size := ui.get_available_size()
 	ui.draw_rect(0, 0, size.x, size.y, {255, 255, 255, 255})
 
 	opts := ui.Text_Options {
-		wrap           = .Letter,
+		wrap           = .Word,
 		letter_spacing = 1,
 		line_spacing   = 10,
 		font           = 0,
@@ -227,7 +227,7 @@ text_tab :: proc() {
 	}
 	ui.text(
 		ui.id("tab/text"),
-		{200, ui.AUTO},
+		{size.x, ui.AUTO},
 		"Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc posuere sed ex dignissim luctus. Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Aliquam ac elementum lorem.",
 		opts,
 	)
