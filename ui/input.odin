@@ -22,6 +22,8 @@ process_input :: proc() {
 
 	for i := ctx.scope_count - 1; i >= 0; i -= 1 {
 		scope := &ctx.buffer[i]
+
+		if !is_visible(i) do continue
 		if scope.interests == {} do continue
 
 		if is_mouse_inside(scope, mouse_pos) {

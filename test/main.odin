@@ -437,7 +437,7 @@ huge_list :: proc() {
 	size := ui.get_available_size()
 	ui.draw_rect(0, 0, size.x, size.y, {40, 40, 40, 255})
 
-	count := 1_000_00
+	count := 1_000_000
 
 	states, states_just_created := ui.get(
 		ui.id("huge_list/states"),
@@ -466,8 +466,8 @@ huge_list :: proc() {
 		if ui.next(&c) {
 			size := ui.get_available_size()
 
-			if !ui.is_visible() do continue
 			ui.bind(.Hovered, &states[i])
+			if !ui.is_visible() do continue
 
 			if states[i] do scroll_modifier = 100
 
