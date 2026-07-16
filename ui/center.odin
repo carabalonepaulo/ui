@@ -4,7 +4,6 @@ Center :: struct {
 	container_scope: int,
 	content_scope:   int,
 	uid:             Id,
-	done:            bool,
 	fit:             Fit,
 }
 
@@ -29,24 +28,14 @@ begin_center :: proc(uid: Id) -> Center {
 	fit := begin_fit(id(uid, "fit"), {AUTO, AUTO})
 	content_scope := get_scope_id()
 
-	return Center{container_scope, content_scope, uid, false, fit}
-}
-
-@(private = "file")
-end_center_child :: proc(state: ^Center, success: bool) {
-	if success do end_fit(state.fit)
-}
-
-@(deferred_in_out = end_center_child)
-center_next :: proc(center: ^Center) -> bool {
-	defer center.done = true
-	return !center.done
+	return Center{container_scope, content_scope, uid, fit}
 }
 
 end_center :: proc(center: Center) {
-	size := get_size(center.content_scope)
+	end_fit(center.fit)
+
 	state := get(center.uid, State)
-	state.last_size = size
+	state.last_size = get_size(center.content_scope)
 
 	end_scope()
 }

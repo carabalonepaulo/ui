@@ -7,7 +7,7 @@ import "core:mem"
 import "core:strings"
 import rl "vendor:raylib"
 
-FIRST_TAB :: 1
+FIRST_TAB :: 0
 
 scroll_modifier: f32 = 5
 
@@ -219,7 +219,11 @@ layout_tab :: proc() {
 			{{.Flex, 1}, {.Flex, 1}, {.Flex, 1}},
 			32,
 		)
-		if ui.next(&c) do simple()
+		if ui.next(&c) {
+			r := ui.row(ui.id("root/first/row"), ui.get_available_size(), {{.Flex, 1}, {.Flex, 1}})
+			if ui.next(&r) do simple()
+			if ui.next(&r) do stack()
+		}
 		if ui.next(&c) do wrap()
 		if ui.next(&c) do row()
 	}
@@ -259,6 +263,19 @@ text_tab :: proc() {
 profiler :: proc() {
 	size := ui.get_available_size()
 	ui.profiler()
+}
+
+stack :: proc() {
+	size := ui.get_available_size()
+	ui.draw_rect(0, 0, size.x, size.y, {255, 255, 0, 255})
+
+	stack := ui.stack(ui.id("root/stack"), .X, 10)
+	for i in 1 ..= 3 {
+		if ui.next(&stack, {40, f32(i) * 40 / 2}) {
+			size := ui.get_available_size()
+			ui.draw_rect(0, 0, size.x, size.y, {0, 255, 0, 255})
+		}
+	}
 }
 
 Simple_State :: struct {
@@ -400,16 +417,15 @@ center :: proc() {
 	ui.draw_rect(0, 0, size.x, size.y, bg_color)
 
 	{
-		c := ui.center(ui.id("root/center"))
-		if ui.next(&c) {
-			ui.scope({100, 100}, {.Pass_Through})
-			ui.bind(.Hovered, &state.child_hover)
+		ui.center(ui.id("root/center"))
 
-			size := ui.get_available_size()
-			bg_color :=
-				state.child_hover ? ui.Color({200, 200, 200, 255}) : ui.Color({200, 50, 50, 255})
-			ui.draw_rect(0, 0, size.x, size.y, bg_color)
-		}
+		ui.scope({100, 100}, {.Pass_Through})
+		ui.bind(.Hovered, &state.child_hover)
+
+		size := ui.get_available_size()
+		bg_color :=
+			state.child_hover ? ui.Color({200, 200, 200, 255}) : ui.Color({200, 50, 50, 255})
+		ui.draw_rect(0, 0, size.x, size.y, bg_color)
 	}
 
 	ui.scope({32, 32})

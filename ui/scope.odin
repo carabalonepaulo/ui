@@ -154,6 +154,11 @@ get_size :: #force_inline proc(id := -1) -> Vec2 {
 	return ctx.buffer[id].size
 }
 
+get_content_size :: #force_inline proc(id := -1) -> Vec2 {
+	id := id == -1 ? ctx.current_scope : id
+	return ctx.buffer[id].content_size
+}
+
 get_screen_pos :: #force_inline proc(id := -1) -> Vec2 {
 	id := id == -1 ? ctx.current_scope : id
 	return ctx.buffer[id].screen_pos
