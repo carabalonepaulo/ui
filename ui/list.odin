@@ -20,7 +20,6 @@ list :: proc(
 	visible := int(size.y / pitch) + 2
 	container.cursor += {0, f32(skip) * pitch}
 
-	draw_rect(0, 0, size.x, size.y, {30, 80, 30, 255})
 	for i in skip ..< min(skip + visible, items_count) {
 		scope({size.x, item_height})
 		item(i, ud)

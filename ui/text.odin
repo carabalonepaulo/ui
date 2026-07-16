@@ -61,7 +61,6 @@ text :: proc(uid: Id, size: Vec2, text: string, opts: Text_Options, flags: Scope
 
 	container := get_scope()
 	container_size := get_size()
-	draw_rect(0, 0, container_size.x, container_size.y, {255, 0, 0, 255})
 
 	if opts.scroll == .X || opts.scroll == .Both {
 		bind(.Scroll_X, get(id(uid, 'x'), f32))
@@ -75,15 +74,7 @@ text :: proc(uid: Id, size: Vec2, text: string, opts: Text_Options, flags: Scope
 	text_size := get_text_size(text_id, text, &opts)
 
 	if (text_size.x < container_size.x && text_size.y < container_size.y) || opts.wrap == .None {
-		draw_text(
-			opts.font,
-			text,
-			-container.offset.x,
-			-container.offset.y,
-			opts.font_size,
-			opts.letter_spacing,
-			opts.font_color,
-		)
+		draw_text(opts.font, text, 0, 0, opts.font_size, opts.letter_spacing, opts.font_color)
 		container.content_size = text_size
 		return
 	}
@@ -128,8 +119,8 @@ draw :: proc(
 	draw_text(
 		opts.font,
 		text,
-		container.cursor.x - container.offset.x,
-		container.cursor.y - container.offset.y,
+		container.cursor.x,
+		container.cursor.y,
 		opts.font_size,
 		opts.letter_spacing,
 		opts.font_color,

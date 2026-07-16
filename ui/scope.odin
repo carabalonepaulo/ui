@@ -154,6 +154,11 @@ get_size :: #force_inline proc(id := -1) -> Vec2 {
 	return ctx.buffer[id].size
 }
 
+get_screen_pos :: #force_inline proc(id := -1) -> Vec2 {
+	id := id == -1 ? ctx.current_scope : id
+	return ctx.buffer[id].screen_pos
+}
+
 get_available_size :: #force_inline proc(id := -1) -> Vec2 {
 	id := id == -1 ? ctx.current_scope : id
 	scope := &ctx.buffer[id]
@@ -225,5 +230,23 @@ get_anchor :: proc(anchor: Anchor, id := -1) -> (Vec2, bool) #optional_ok {
 	}
 
 	return {}, false
+}
+
+to_screen_pos_at :: #force_inline proc(id: int, local: Vec2) -> Vec2 {
+	scope := get_scope(id)
+	return scope.screen_pos + local - scope.offset
+}
+
+to_local_pos_at :: #force_inline proc(id: int, screen: Vec2) -> Vec2 {
+	scope := get_scope(id)
+	return screen - scope.screen_pos + scope.offset
+}
+
+to_screen_pos :: #force_inline proc(local: Vec2) -> Vec2 {
+	return to_screen_pos_at(ctx.current_scope, local)
+}
+
+to_local_pos :: #force_inline proc(screen: Vec2) -> Vec2 {
+	return to_local_pos_at(ctx.current_scope, screen)
 }
 
