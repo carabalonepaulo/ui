@@ -17,7 +17,7 @@ list :: proc(
 
 	pitch := item_height + gap
 	skip := max(int(offset^ / pitch), 0)
-	visible := int(size.y / pitch) + 1
+	visible := int(size.y / pitch) + 2
 	container.cursor += {0, f32(skip) * pitch}
 
 	draw_rect(0, 0, size.x, size.y, {30, 80, 30, 255})

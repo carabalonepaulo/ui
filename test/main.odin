@@ -234,11 +234,12 @@ layout_tab :: proc() {
 }
 
 text_tab :: proc() {
-	ui.scope({210, 100})
+	ui.fit(ui.id(12093, 123), {210, 100})
 	size := ui.get_available_size()
 	ui.draw_rect(0, 0, size.x, size.y, {255, 255, 255, 255})
 
 	opts := ui.Text_Options {
+		scroll         = .Y,
 		wrap           = .Word,
 		letter_spacing = 1,
 		line_spacing   = 10,
@@ -248,9 +249,10 @@ text_tab :: proc() {
 	}
 	ui.text(
 		ui.id("tab/text"),
-		{size.x, ui.AUTO},
-		"Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc posuere sed ex dignissim luctus. Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Aliquam ac elementum lorem.",
+		{size.x, size.y},
+		"aoisdjhaiodhaisodhioahdioashdioashdioahdioashdioashdioadhaiosdhaiosd Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc posuere sed ex dignissim luctus. Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Aliquam ac elementum lorem.",
 		opts,
+		{.Clip},
 	)
 }
 
@@ -419,7 +421,7 @@ huge_list :: proc() {
 	size := ui.get_available_size()
 	ui.draw_rect(0, 0, size.x, size.y, {40, 40, 40, 255})
 
-	count := 10_000
+	count := 1_000_00
 
 	states, states_just_created := ui.get(
 		ui.id("huge_list/states"),

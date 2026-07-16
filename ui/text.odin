@@ -15,6 +15,13 @@ Text_Wrap :: enum {
 	Letter,
 }
 
+Text_Sroll :: enum {
+	None,
+	X,
+	Y,
+	Both,
+}
+
 Text_Options :: struct {
 	wrap:           Text_Wrap,
 	letter_spacing: f32,
@@ -22,21 +29,31 @@ Text_Options :: struct {
 	font:           Font,
 	font_size:      f32,
 	font_color:     Color,
+	scroll:         Text_Sroll,
 }
 
-text :: proc(uid: Id, size: Vec2, text: string, opts: Text_Options) {
+text :: proc(uid: Id, size: Vec2, text: string, opts: Text_Options, flags: Scope_Flags = {}) {
 	assert(!(size.x == AUTO && size.y == AUTO), "only one axis can be auto")
 
 	text := text
 	opts := opts
 
-	if size.x == AUTO do opts.wrap = .None
+	if size.x == AUTO {
+		opts.wrap = .None
+		if opts.scroll == .X do opts.scroll = .None
+		else if opts.scroll == .Both do opts.scroll = .Y
+	}
+
+	if size.y == AUTO {
+		if opts.scroll == .Y do opts.scroll = .None
+		else if opts.scroll == .Both do opts.scroll = .X
+	}
 
 	is_fit := size.x == AUTO || size.y == AUTO
 	fit: Fit
 
-	if is_fit do fit = begin_fit(id(uid, "fit", {}), size)
-	else do begin_scope(size, {})
+	if is_fit do fit = begin_fit(id(uid, "fit"), size, flags)
+	else do begin_scope(size, flags)
 	defer {
 		if is_fit do end_fit(fit)
 		else do end_scope()
@@ -46,11 +63,27 @@ text :: proc(uid: Id, size: Vec2, text: string, opts: Text_Options) {
 	container_size := get_size()
 	draw_rect(0, 0, container_size.x, container_size.y, {255, 0, 0, 255})
 
+	if opts.scroll == .X || opts.scroll == .Both {
+		bind(.Scroll_X, get(id(uid, 'x'), f32))
+	}
+
+	if opts.scroll == .Y || opts.scroll == .Both {
+		bind(.Scroll_Y, get(id(uid, 'y'), f32))
+	}
+
 	text_id := id(uid, text)
 	text_size := get_text_size(text_id, text, &opts)
 
 	if (text_size.x < container_size.x && text_size.y < container_size.y) || opts.wrap == .None {
-		draw_text(opts.font, text, 0, 0, opts.font_size, opts.letter_spacing, opts.font_color)
+		draw_text(
+			opts.font,
+			text,
+			-container.offset.x,
+			-container.offset.y,
+			opts.font_size,
+			opts.letter_spacing,
+			opts.font_color,
+		)
 		container.content_size = text_size
 		return
 	}
@@ -66,7 +99,8 @@ text :: proc(uid: Id, size: Vec2, text: string, opts: Text_Options) {
 		draw(container, &available, &max_width, token, token_size, step, &opts)
 	}
 
-	container.content_size = {max_width, container.cursor.y + opts.font_size}
+	final_width := size.x != AUTO ? clamp(max_width, 0, container.size.x) : max_width
+	container.content_size = {final_width, container.cursor.y + opts.font_size}
 }
 
 @(private = "file")
@@ -84,7 +118,7 @@ draw :: proc(
 	step: f32,
 	opts: ^Text_Options,
 ) {
-	if available^ - text_size.x < 0 {
+	if container.cursor.x > 0 && available^ - text_size.x < 0 {
 		if container.cursor.x > max_width^ do max_width^ = container.cursor.x
 		container.cursor.y += opts.font_size + opts.line_spacing
 		container.cursor.x = 0
@@ -94,8 +128,8 @@ draw :: proc(
 	draw_text(
 		opts.font,
 		text,
-		container.cursor.x,
-		container.cursor.y,
+		container.cursor.x - container.offset.x,
+		container.cursor.y - container.offset.y,
 		opts.font_size,
 		opts.letter_spacing,
 		opts.font_color,
