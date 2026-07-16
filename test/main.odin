@@ -417,7 +417,7 @@ center :: proc() {
 	ui.draw_rect(0, 0, size.x, size.y, bg_color)
 
 	{
-		ui.center(ui.id("root/center"))
+		ui.center(ui.id("root/center"), {100, 100})
 
 		ui.scope({100, 100}, {.Pass_Through})
 		ui.bind(.Hovered, &state.child_hover)
@@ -437,7 +437,7 @@ huge_list :: proc() {
 	size := ui.get_available_size()
 	ui.draw_rect(0, 0, size.x, size.y, {40, 40, 40, 255})
 
-	count := 1_000_000
+	count := 1_000_00
 
 	states, states_just_created := ui.get(
 		ui.id("huge_list/states"),
