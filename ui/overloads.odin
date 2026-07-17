@@ -15,3 +15,8 @@ next :: proc {
 	stack_next,
 }
 
+measure :: proc {
+	measure_fixed,
+	measure_dynamic,
+}
+

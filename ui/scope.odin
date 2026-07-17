@@ -255,3 +255,18 @@ to_local_pos :: #force_inline proc(screen: Vec2) -> Vec2 {
 	return to_local_pos_at(ctx.current_scope, screen)
 }
 
+measure_fixed :: proc(size: f32, count: int, gap: f32 = 0) -> f32 {
+	if count <= 0 do return 0
+	count := f32(count)
+	return size * count + gap * (count - 1)
+}
+
+measure_dynamic :: proc(items: []$T, fn: proc(item: T) -> f32, gap: f32 = 0) -> f32 {
+	if len(items) == 0 do return 0
+
+	size := 0
+	for item in items do size += fn(item)
+
+	return size + gap * f32(len(items) - 1)
+}
+

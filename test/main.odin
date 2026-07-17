@@ -213,12 +213,8 @@ layout_tab :: proc() {
 	r := ui.row(ui.id("root"), size, {{.Flex, 1}, {.Flex, 1}}, 32)
 
 	if ui.next(&r) {
-		c := ui.col(
-			ui.id("root/col"),
-			ui.get_available_size(),
-			{{.Flex, 1}, {.Flex, 1}, {.Flex, 1}},
-			32,
-		)
+		size := ui.get_available_size()
+		c := ui.col(ui.id("root/col"), size, {{.Flex, 1}, {.Flex, 1}, {.Flex, 1}}, 32)
 		if ui.next(&c) {
 			r := ui.row(ui.id("root/first/row"), ui.get_available_size(), {{.Flex, 1}, {.Flex, 1}})
 			if ui.next(&r) do simple()
@@ -298,7 +294,7 @@ simple :: proc() {
 
 	state := ui.get(ui.id("simple_state"), Simple_State)
 
-	ui.scope({50, 50})
+	ui.scope({50, 50}, {.Clip})
 	ui.bind(.Hovered, &state.is_hovered)
 	ui.bind(.Pressed, &state.is_pressed)
 	ui.bind(.Pressed_Out, &state.is_pressed_out)
@@ -367,6 +363,10 @@ row :: proc() {
 	if ui.next(&row) {
 		child_size := ui.get_available_size()
 		ui.draw_rect(0, 0, child_size.x, child_size.y, transmute(ui.Color)(rl.GREEN))
+
+		ui.padding(top = 10, bottom = 10, left = 10, right = 10)
+		size := ui.get_available_size()
+		ui.draw_rect(0, 0, size.x, size.y, transmute(ui.Color)(rl.MAGENTA))
 	}
 }
 
@@ -437,33 +437,22 @@ huge_list :: proc() {
 	size := ui.get_available_size()
 	ui.draw_rect(0, 0, size.x, size.y, {40, 40, 40, 255})
 
-	count := 1_000_00
+	COUNT :: 100_000
 
 	states, states_just_created := ui.get(
 		ui.id("huge_list/states"),
 		[]bool,
 		destroy = proc(states: ^[]bool) {delete(states^)},
 	)
-	if states_just_created do states^ = make([]bool, count)
-
-	constraints, just_created := ui.get(
-		ui.id("huge_list/constraints"),
-		[]ui.Layout_Item,
-		destroy = proc(constraints: ^[]ui.Layout_Item) {delete(constraints^)},
-	)
-	if just_created {
-		list := make([]ui.Layout_Item, count)
-		for i in 0 ..< count do list[i] = {.Absolute, 20}
-		constraints^ = list
-	}
+	if states_just_created do states^ = make([]bool, COUNT)
 
 	ui.scope(size, {.Clip})
 	offset := ui.get(ui.id("huge_list/offset"), f32)
 	ui.bind(.Scroll_Y, offset)
 
-	c := ui.col(ui.id("huge_list/col"), {size.x, ui.AUTO}, constraints^)
-	for i in 0 ..< count {
-		if ui.next(&c) {
+	s := ui.stack(ui.id("huge_list/stack"), .Y)
+	for i in 0 ..< COUNT {
+		if ui.next(&s, {size.x, 20}) {
 			size := ui.get_available_size()
 
 			ui.bind(.Hovered, &states[i])
