@@ -70,7 +70,7 @@ text :: proc(uid: Id, size: Vec2, text: string, opts: Text_Options, flags: Scope
 		bind(.Scroll_Y, get(id(uid, 'y'), f32))
 	}
 
-	text_id := id(uid, text)
+	text_id := id(uid, text, opts.font, opts.font_size, opts.letter_spacing, opts.line_spacing)
 	text_size := get_text_size(text_id, text, &opts)
 
 	if (text_size.x < container_size.x && text_size.y < container_size.y) || opts.wrap == .None {
@@ -92,11 +92,6 @@ text :: proc(uid: Id, size: Vec2, text: string, opts: Text_Options, flags: Scope
 
 	final_width := size.x != AUTO ? clamp(max_width, 0, container.size.x) : max_width
 	container.content_size = {final_width, container.cursor.y + opts.font_size}
-}
-
-@(private = "file")
-measure_text :: #force_inline proc(text: string, opts: ^Text_Options) -> Vec2 {
-	return ctx.callbacks.measure_text(opts.font, text, opts.font_size, opts.letter_spacing)
 }
 
 @(private = "file")
@@ -168,7 +163,12 @@ get_token_cache :: proc(uid: Id, text: string, opts: ^Text_Options) -> []Cached_
 				if rune == ' ' {
 					end := idx - rune_size
 					if start < end {
-						word_size := measure_text(text[start:end], opts)
+						word_size := ctx.callbacks.measure_text(
+							opts.font,
+							text[start:end],
+							opts.font_size,
+							opts.letter_spacing,
+						)
 						cached := Cached_Token{start, end, word_size, word_size.x + space_size.x}
 						append(&sizes, cached)
 					}
@@ -177,7 +177,12 @@ get_token_cache :: proc(uid: Id, text: string, opts: ^Text_Options) -> []Cached_
 			}
 
 			if start < idx {
-				word_size := measure_text(text[start:idx], opts)
+				word_size := ctx.callbacks.measure_text(
+					opts.font,
+					text[start:idx],
+					opts.font_size,
+					opts.letter_spacing,
+				)
 				cached := Cached_Token{start, idx, word_size, word_size.x}
 				append(&sizes, cached)
 			}
@@ -197,7 +202,12 @@ get_token_cache :: proc(uid: Id, text: string, opts: ^Text_Options) -> []Cached_
 					token.size = space_size
 					token.step = space_size.x + opts.letter_spacing
 				} else {
-					token.size = measure_text(letter, opts)
+					word_size := ctx.callbacks.measure_text(
+						opts.font,
+						letter,
+						opts.font_size,
+						opts.letter_spacing,
+					)
 					token.step = token.size.x + opts.letter_spacing
 				}
 
