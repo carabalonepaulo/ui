@@ -74,7 +74,7 @@ text :: proc(uid: Id, size: Vec2, text: string, opts: Text_Options, flags: Scope
 	text_size := get_text_size(text_id, text, &opts)
 
 	if (text_size.x < container_size.x && text_size.y < container_size.y) || opts.wrap == .None {
-		draw_text(opts.font, text, 0, 0, opts.font_size, opts.letter_spacing, opts.font_color)
+		draw_text(opts.font, text, {}, opts.font_size, opts.letter_spacing, opts.font_color)
 		container.content_size = text_size
 		return
 	}
@@ -119,8 +119,7 @@ draw :: proc(
 	draw_text(
 		opts.font,
 		text,
-		container.cursor.x,
-		container.cursor.y,
+		container.cursor,
 		opts.font_size,
 		opts.letter_spacing,
 		opts.font_color,

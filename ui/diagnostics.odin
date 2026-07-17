@@ -51,7 +51,7 @@ profiler :: proc() {
 	fit(id("internal/profiler/fit"), {AUTO, AUTO}, {.Clip})
 
 	size := get_available_size()
-	draw_rect(0, 0, size.x, size.y, {67, 67, 67, 200})
+	draw_rect({0, 0}, size, {67, 67, 67, 200})
 
 	constraints, just_created := get(
 		id("internal/profiler/constraints"),
@@ -76,10 +76,10 @@ profiler :: proc() {
 		if next(&c) {
 			row_id := id("internal/profiler/row", i)
 			r := row(row_id, get_available_size(), {{.Flex, 2}, {.Flex, 1}})
-			if next(&r) do draw_text(0, value.label, 0, 0, font_size, 1, {0, 0, 0, 255})
+			if next(&r) do draw_text(0, value.label, {}, font_size, 1, {0, 0, 0, 255})
 			if next(&r) {
 				text := fmt.aprintf("%v", value.value, allocator = get_temp_allocator())
-				draw_text(0, text, 0, 0, font_size, 1, {0, 0, 0, 255})
+				draw_text(0, text, {}, font_size, 1, {0, 0, 0, 255})
 			}
 		}
 	}
