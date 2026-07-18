@@ -1,5 +1,6 @@
 package ui
 
+import "core:image/netpbm"
 Layout_Kind :: enum {
 	Absolute,
 	Flex,
@@ -16,19 +17,28 @@ Flex_Dir :: enum {
 }
 
 Flex :: struct {
+	inner_flags:   Scope_Flags,
 	dir:           Flex_Dir,
 	current_child: int,
 	computed:      []f32,
 	gap:           f32,
 }
 
-begin_flex :: proc(size: Vec2, dir: Flex_Dir, items: []Layout_Item, gap: f32 = 0) -> Flex {
-	begin_scope(size)
+begin_flex :: proc(
+	size: Vec2,
+	dir: Flex_Dir,
+	items: []Layout_Item,
+	gap: f32 = 0,
+	flags: Scope_Flags = {},
+	inner_flags: Scope_Flags = {},
+) -> Flex {
+	begin_scope(size, flags)
 
 	container := get_scope()
 	size := get_size()
 
 	state := Flex {
+		inner_flags   = inner_flags,
 		dir           = dir,
 		current_child = 0,
 		computed      = make([]f32, len(items), ctx.arena_allocator),
@@ -79,7 +89,7 @@ flex_next :: proc(state: ^Flex) -> bool {
 		child_size = {container.size.x, state.computed[state.current_child]}
 	}
 
-	begin_scope(child_size)
+	begin_scope(child_size, state.inner_flags)
 
 	container.cursor[state.dir] += child_size[state.dir]
 	if state.current_child < len(state.computed) - 1 {
@@ -92,7 +102,14 @@ flex_next :: proc(state: ^Flex) -> bool {
 }
 
 @(deferred_none = end_scope)
-flex :: proc(size: Vec2, dir: Flex_Dir, items: []Layout_Item, gap: f32 = 0) -> Flex {
-	return begin_flex(size, dir, items, gap)
+flex :: proc(
+	size: Vec2,
+	dir: Flex_Dir,
+	items: []Layout_Item,
+	gap: f32 = 0,
+	flags: Scope_Flags = {},
+	inner_flags: Scope_Flags = {},
+) -> Flex {
+	return begin_flex(size, dir, items, gap, flags, inner_flags)
 }
 

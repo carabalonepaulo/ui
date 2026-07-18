@@ -73,7 +73,6 @@ Interest :: enum {
 	Pressed_Out,
 	Released,
 	Released_Out,
-	Focused,
 }
 
 Interests :: bit_set[Interest]

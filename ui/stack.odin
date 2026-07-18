@@ -6,14 +6,21 @@ Stack_Dir :: enum {
 }
 
 Stack :: struct {
-	dir: Stack_Dir,
-	fit: Fit,
-	gap: f32,
+	inner_flags: Scope_Flags,
+	dir:         Stack_Dir,
+	fit:         Fit,
+	gap:         f32,
 }
 
-begin_stack :: proc(uid: Id, dir: Stack_Dir, gap: f32 = 0) -> Stack {
-	fit := begin_fit(uid, {AUTO, AUTO})
-	return {dir, fit, gap}
+begin_stack :: proc(
+	uid: Id,
+	dir: Stack_Dir,
+	gap: f32 = 0,
+	flags: Scope_Flags = {},
+	inner_flags: Scope_Flags = {},
+) -> Stack {
+	fit := begin_fit(uid, {AUTO, AUTO}, flags)
+	return {inner_flags, dir, fit, gap}
 }
 
 end_stack :: proc(stack: Stack) {
@@ -30,12 +37,18 @@ end_stack_next :: proc(stack: ^Stack, size: Vec2) {
 
 @(deferred_in = end_stack_next)
 stack_next :: proc(stack: ^Stack, size: Vec2) -> bool {
-	begin_scope(size)
+	begin_scope(size, stack.inner_flags)
 	return true
 }
 
 @(deferred_out = end_stack)
-stack :: proc(uid: Id, dir: Stack_Dir, gap: f32 = 0) -> Stack {
-	return begin_stack(uid, dir, gap)
+stack :: proc(
+	uid: Id,
+	dir: Stack_Dir,
+	gap: f32 = 0,
+	flags: Scope_Flags = {},
+	inner_flags: Scope_Flags = {},
+) -> Stack {
+	return begin_stack(uid, dir, gap, flags, inner_flags)
 }
 

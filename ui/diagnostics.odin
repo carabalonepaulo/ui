@@ -69,7 +69,7 @@ profiler :: proc() {
 	c := stack(id("internal/profiler/stack"), .Y, gap)
 
 	for value, i in rows {
-		if next(&c, {width, font_size}) {
+		if next(&c, Vec2{width, font_size}) {
 			r := flex(get_available_size(), .X, {{.Flex, 2}, {.Flex, 1}})
 			if next(&r) do draw_text(0, value.label, {}, font_size, 1, {200, 200, 200, 255})
 			if next(&r) {
