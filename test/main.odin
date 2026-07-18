@@ -280,7 +280,7 @@ Simple_State :: struct {
 
 simple :: proc() {
 	ui.scope({100, 100}, {.Clip})
-	ui.draw_rect({}, {800, 600}, transmute(ui.Color)(rl.RED))
+	ui.draw_rect({}, {800, 600}, auto_cast rl.RED)
 
 	scope := ui.get_scope()
 	scope.cursor += {75, 75}
@@ -296,7 +296,7 @@ simple :: proc() {
 	ui.bind(.Released_Out, &state.is_released_out)
 
 	color := state.is_hovered ? rl.GREEN : rl.MAGENTA
-	ui.draw_rect({}, {800, 600}, transmute(ui.Color)(color))
+	ui.draw_rect({}, {800, 600}, auto_cast color)
 
 	if state.is_hovered do state.popup_visible = true
 
@@ -304,10 +304,9 @@ simple :: proc() {
 		anchor := ui.get_anchor(.Bottom_Left)
 		ui.popup_with_poly(anchor, {100, 100}, state, proc(state: ^Simple_State) {
 			ui.bind(.Hovered, &state.is_hover_popup)
-			size := ui.get_available_size()
 			color := state.is_hover_popup ? rl.RED : rl.PURPLE
-			ui.fill_rect(transmute(ui.Color)(color))
-			ui.draw_text(0, "hello", {}, 20, 1, transmute(ui.Color)(rl.BLACK))
+			ui.fill_rect(auto_cast color)
+			ui.draw_text(0, "hello", {}, 20, 1, auto_cast rl.BLACK)
 		})
 		if !state.is_hover_popup && !state.is_hovered do state.popup_visible = false
 	}
@@ -320,46 +319,36 @@ simple :: proc() {
 
 row :: proc() {
 	ui.scope(ui.get_available_size())
-	size := ui.get_available_size()
-	ui.fill_rect(transmute(ui.Color)(rl.GRAY))
+	ui.fill_rect(auto_cast rl.GRAY)
 
 	row := ui.row(
 		ui.id("main/row"),
-		size,
+		ui.get_available_size(),
 		{{.Flex, 1}, {.Flex, 5}},
 		gap = 10,
 		padding = {10, 10, 10, 10},
 	)
 
 	if ui.next(&row) {
-		child_size := ui.get_available_size()
-		ui.fill_rect(transmute(ui.Color)(rl.RED))
+		ui.fill_rect(auto_cast rl.RED)
 
 		col := ui.col(
 			ui.id("main/row", 1),
-			child_size,
+			ui.get_available_size(),
 			{{.Flex, 1}, {.Flex, 2}},
 			10,
 			{10, 10, 10, 10},
 		)
 
-		if ui.next(&col) {
-			child_size := ui.get_available_size()
-			ui.fill_rect(transmute(ui.Color)(rl.MAGENTA))
-		}
-
-		if ui.next(&col) {
-			child_size := ui.get_available_size()
-			ui.fill_rect(transmute(ui.Color)(rl.BLUE))
-		}
+		if ui.next(&col) do ui.fill_rect(auto_cast rl.MAGENTA)
+		if ui.next(&col) do ui.fill_rect(auto_cast rl.BLUE)
 	}
 
 	if ui.next(&row) {
-		child_size := ui.get_available_size()
-		ui.fill_rect(transmute(ui.Color)(rl.GREEN))
+		ui.fill_rect(auto_cast rl.GREEN)
 
 		ui.padding(top = 10, bottom = 10, left = 10, right = 10)
-		ui.fill_rect(transmute(ui.Color)(rl.MAGENTA))
+		ui.fill_rect(auto_cast rl.MAGENTA)
 	}
 }
 
@@ -389,7 +378,7 @@ wrap :: proc() {
 	for item_size, index in item_sizes {
 		if ui.next(&w, item_size) {
 			color := palette[index % len(palette)]
-			ui.fill_rect(transmute(ui.Color)(color))
+			ui.fill_rect(auto_cast color)
 		}
 	}
 }
@@ -412,10 +401,9 @@ center :: proc() {
 		ui.scope({100, 100}, {.Pass_Through})
 		ui.bind(.Hovered, &state.child_hover)
 
-		size := ui.get_available_size()
 		bg_color :=
 			state.child_hover ? ui.Color({200, 200, 200, 255}) : ui.Color({200, 50, 50, 255})
-		ui.draw_rect({}, size, bg_color)
+		ui.fill_rect(bg_color)
 	}
 
 	ui.scope({32, 32})
