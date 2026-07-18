@@ -3,6 +3,7 @@ package test
 import "../ui"
 import "core:c"
 import "core:fmt"
+import "core:math"
 import "core:mem"
 import "core:strings"
 import rl "vendor:raylib"
@@ -58,10 +59,10 @@ CALLBACKS :: ui.Callbacks {
 	//
 	draw_rect = proc(x, y, w, h: f32, color: ui.Color) {
 		rl.DrawRectangle(
-			(c.int)(x),
-			(c.int)(y),
-			(c.int)(w),
-			(c.int)(h),
+			(c.int)(math.floor(x)),
+			(c.int)(math.floor(y)),
+			(c.int)(math.ceil(w)),
+			(c.int)(math.ceil(h)),
 			transmute(rl.Color)(color),
 		)
 	},
@@ -181,8 +182,7 @@ tabs :: proc(tabs: []Tab) {
 				ui.bind(.Hovered, &state[i].hover)
 				ui.bind(.Pressed, &state[i].pressed)
 
-				size := ui.get_available_size()
-				ui.draw_rect({}, size, state[i].hover ? tab_bg_hover_color : tab_bg_color)
+				ui.fill_rect(state[i].hover ? tab_bg_hover_color : tab_bg_color)
 				ui.draw_text(0, tabs[i].text, {padding, padding}, font_size, spacing, font_color)
 			}
 		}
@@ -220,7 +220,7 @@ layout_tab :: proc() {
 
 	if ui.next(&r) {
 		size := ui.get_available_size()
-		c := ui.col(ui.id("root/right/col"), size, {{.Flex, 1}, {.Flex, 1}, {.Flex, 1}})
+		c := ui.col(ui.id("root/right/col"), size, {{.Flex, 1}, {.Flex, 1}, {.Flex, 1}}, gap = 10)
 		if ui.next(&c) do center()
 		if ui.next(&c) do huge_list()
 		if ui.next(&c) do list()
@@ -229,8 +229,7 @@ layout_tab :: proc() {
 
 text_tab :: proc() {
 	ui.scope({210, 100})
-	size := ui.get_available_size()
-	ui.draw_rect({}, size, {255, 255, 255, 255})
+	ui.fill_rect({255, 255, 255, 255})
 	ui.padding(top = 10, bottom = 10, right = 10, left = 10)
 
 	opts := ui.Text_Options {
@@ -244,7 +243,7 @@ text_tab :: proc() {
 	}
 	ui.text(
 		ui.id("tab/text"),
-		size,
+		ui.get_available_size(),
 		"aoisdjhaiodhaisodhioahdioashdioashdioahdioashdioashdioadhaiosdhaiosd Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc posuere sed ex dignissim luctus. Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Aliquam ac elementum lorem.",
 		opts,
 		{.Clip},
@@ -307,7 +306,7 @@ simple :: proc() {
 			ui.bind(.Hovered, &state.is_hover_popup)
 			size := ui.get_available_size()
 			color := state.is_hover_popup ? rl.RED : rl.PURPLE
-			ui.draw_rect({}, size, transmute(ui.Color)(color))
+			ui.fill_rect(transmute(ui.Color)(color))
 			ui.draw_text(0, "hello", {}, 20, 1, transmute(ui.Color)(rl.BLACK))
 		})
 		if !state.is_hover_popup && !state.is_hovered do state.popup_visible = false
@@ -322,7 +321,7 @@ simple :: proc() {
 row :: proc() {
 	ui.scope(ui.get_available_size())
 	size := ui.get_available_size()
-	ui.draw_rect({}, size, transmute(ui.Color)(rl.GRAY))
+	ui.fill_rect(transmute(ui.Color)(rl.GRAY))
 
 	row := ui.row(
 		ui.id("main/row"),
@@ -334,7 +333,7 @@ row :: proc() {
 
 	if ui.next(&row) {
 		child_size := ui.get_available_size()
-		ui.draw_rect({}, child_size, transmute(ui.Color)(rl.RED))
+		ui.fill_rect(transmute(ui.Color)(rl.RED))
 
 		col := ui.col(
 			ui.id("main/row", 1),
@@ -346,22 +345,21 @@ row :: proc() {
 
 		if ui.next(&col) {
 			child_size := ui.get_available_size()
-			ui.draw_rect({}, child_size, transmute(ui.Color)(rl.MAGENTA))
+			ui.fill_rect(transmute(ui.Color)(rl.MAGENTA))
 		}
 
 		if ui.next(&col) {
 			child_size := ui.get_available_size()
-			ui.draw_rect({}, child_size, transmute(ui.Color)(rl.BLUE))
+			ui.fill_rect(transmute(ui.Color)(rl.BLUE))
 		}
 	}
 
 	if ui.next(&row) {
 		child_size := ui.get_available_size()
-		ui.draw_rect({}, child_size, transmute(ui.Color)(rl.GREEN))
+		ui.fill_rect(transmute(ui.Color)(rl.GREEN))
 
 		ui.padding(top = 10, bottom = 10, left = 10, right = 10)
-		size := ui.get_available_size()
-		ui.draw_rect({}, size, transmute(ui.Color)(rl.MAGENTA))
+		ui.fill_rect(transmute(ui.Color)(rl.MAGENTA))
 	}
 }
 
@@ -390,10 +388,8 @@ wrap :: proc() {
 
 	for item_size, index in item_sizes {
 		if ui.next(&w, item_size) {
-			child_size := ui.get_available_size()
-
 			color := palette[index % len(palette)]
-			ui.draw_rect({}, child_size, transmute(ui.Color)(color))
+			ui.fill_rect(transmute(ui.Color)(color))
 		}
 	}
 }
@@ -407,9 +403,8 @@ center :: proc() {
 	state := ui.get(ui.id("root/center/state"), Center_State)
 	ui.bind(.Hovered, &state.parent_hover)
 
-	size := ui.get_available_size()
 	bg_color := state.parent_hover ? ui.Color({0, 0, 0, 255}) : ui.Color({50, 50, 50, 255})
-	ui.draw_rect({}, size, bg_color)
+	ui.fill_rect(bg_color)
 
 	{
 		ui.center(ui.id("root/center"), {100, 100})
@@ -424,8 +419,7 @@ center :: proc() {
 	}
 
 	ui.scope({32, 32})
-	size = ui.get_available_size()
-	ui.draw_rect({}, size, {200, 0, 20, 255})
+	ui.fill_rect({200, 0, 20, 255})
 }
 
 huge_list :: proc() {
@@ -441,7 +435,9 @@ huge_list :: proc() {
 	)
 	if states_just_created do states^ = make([]bool, COUNT)
 
-	ui.scope(size, {.Clip})
+	ui.padding(top = 10, bottom = 10, left = 10, right = 10)
+
+	ui.scope(ui.get_available_size(), {.Clip})
 	offset := ui.get(ui.id("huge_list/offset"), f32)
 	ui.bind(.Scroll_Y, offset)
 
@@ -458,7 +454,7 @@ huge_list :: proc() {
 			color: ui.Color = i % 2 == 0 ? {255, 255, 255, 255} : {100, 100, 100, 255}
 			color = states[i] ? {255, 0, 0, 255} : color
 
-			ui.draw_rect({}, size, color)
+			ui.fill_rect(color)
 			scope := ui.get_scope()
 			ui.draw_text(
 				0,
@@ -491,6 +487,9 @@ list :: proc() {
 		items^ = slice
 	}
 
+	ui.fill_rect({40, 40, 40, 255})
+	ui.padding(top = 10, bottom = 10, left = 10, right = 10)
+
 	ui.list_with_poly(ui.id("list"), ui.get_available_size(), count, 20, 10, items, proc(i: int, items: ^[]State) {
 		ui.bind(.Hovered, &items[i].is_hover)
 
@@ -499,8 +498,7 @@ list :: proc() {
 		color: ui.Color = i % 2 == 0 ? {255, 255, 255, 255} : {100, 100, 100, 255}
 		color = items[i].is_hover ? {255, 0, 0, 255} : color
 
-		size := ui.get_available_size()
-		ui.draw_rect({}, size, color)
+		ui.fill_rect(color)
 		ui.draw_text(0, items[i].text, {}, 20, 1, {0, 0, 0, 255})
 	})
 }
