@@ -47,11 +47,13 @@ profiler :: proc() {
 	font_size: f32 = 20
 	gap: f32 = 5
 	width: f32 = 300
+	pad: f32 = 10
 
-	scope({width, get_available_size().y})
+	height := measure(font_size, len(rows), gap, {pad, pad})
+	scope({width, height})
 	fill_rect({0, 0, 0, 200})
 
-	padding(top = 10, bottom = 10, left = 10, right = 10)
+	padding(top = pad, bottom = pad, left = pad, right = pad)
 
 	constraints, just_created := get(
 		id("internal/profiler/constraints"),

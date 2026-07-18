@@ -1,15 +1,13 @@
 package ui
 
 begin_padding :: proc(
-	size: Vec2 = {AUTO, AUTO},
 	top: f32 = 0,
 	right: f32 = 0,
 	bottom: f32 = 0,
 	left: f32 = 0,
 	flags: Scope_Flags = {},
 ) {
-	size := size
-	if size == {AUTO, AUTO} do size = get_available_size()
+	size := get_available_size()
 
 	begin_scope(size, flags)
 	container := get_scope()
@@ -24,13 +22,7 @@ end_padding :: proc() {
 }
 
 @(deferred_none = end_padding)
-padding :: proc(
-	size: Vec2 = {AUTO, AUTO},
-	top: f32 = 0,
-	right: f32 = 0,
-	bottom: f32 = 0,
-	left: f32 = 0,
-) {
-	begin_padding(size, top, right, bottom, left)
+padding :: proc(top: f32 = 0, right: f32 = 0, bottom: f32 = 0, left: f32 = 0) {
+	begin_padding(top, right, bottom, left)
 }
 
