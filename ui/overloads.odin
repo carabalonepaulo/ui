@@ -9,10 +9,9 @@ deinit :: proc {
 }
 
 next :: proc {
-	row_next,
-	col_next,
 	wrap_next,
 	stack_next,
+	flex_next,
 }
 
 measure :: proc {

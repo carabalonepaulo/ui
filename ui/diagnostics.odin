@@ -1,5 +1,6 @@
 package ui
 
+import "core:crypto/ristretto255"
 import "core:fmt"
 import "core:time"
 
@@ -45,13 +46,12 @@ profiler :: proc() {
 
 	font_size: f32 = 20
 	gap: f32 = 5
-	padding: f32 = 10
-	width: f32 = 280
+	width: f32 = 300
 
-	fit(id("internal/profiler/fit"), {AUTO, AUTO}, {.Clip})
+	scope({width, get_available_size().y})
+	fill_rect({0, 0, 0, 200})
 
-	size := get_available_size()
-	draw_rect({0, 0}, size, {67, 67, 67, 200})
+	padding(top = 10, bottom = 10, left = 10, right = 10)
 
 	constraints, just_created := get(
 		id("internal/profiler/constraints"),
@@ -64,21 +64,15 @@ profiler :: proc() {
 		constraints^ = slice
 	}
 
-	c := col(
-		id("internal/profiler/col"),
-		{width, AUTO},
-		constraints^,
-		gap = gap,
-		padding = {padding, padding, padding, padding},
-	)
+	c := stack(id("internal/profiler/stack"), .Y, gap)
 
 	for value, i in rows {
-		if next(&c) {
-			r := row(get_available_size(), {{.Flex, 2}, {.Flex, 1}})
-			if next(&r) do draw_text(0, value.label, {}, font_size, 1, {0, 0, 0, 255})
+		if next(&c, {width, font_size}) {
+			r := flex(get_available_size(), .X, {{.Flex, 2}, {.Flex, 1}})
+			if next(&r) do draw_text(0, value.label, {}, font_size, 1, {200, 200, 200, 255})
 			if next(&r) {
 				text := fmt.aprintf("%v", value.value, allocator = get_temp_allocator())
-				draw_text(0, text, {}, font_size, 1, {0, 0, 0, 255})
+				draw_text(0, text, {}, font_size, 1, {200, 200, 200, 255})
 			}
 		}
 	}

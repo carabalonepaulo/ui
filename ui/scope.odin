@@ -2,6 +2,8 @@ package ui
 
 import "core:math"
 
+AUTO :: -1
+
 intersect :: proc(a, b: Rect) -> Rect {
 	x1 := max(a.x, b.x)
 	y1 := max(a.y, b.y)

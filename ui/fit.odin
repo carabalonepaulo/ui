@@ -4,7 +4,7 @@ Fit :: distinct Id
 
 begin_fit :: proc(uid: Id, size: Vec2, flags: Scope_Flags = {}) -> Fit {
 	size_id := id(uid, "fit/size")
-	prev_size := get(size_id, Vec2, Vec2{max(0, size.x), max(0, size.y)})
+	prev_size := get(size_id, Vec2) //, Vec2{max(0, size.x), max(0, size.y)})
 	prev_size^ = {max(size.x, prev_size.x), max(size.y, prev_size.y)}
 	begin_scope(prev_size^, flags)
 	return Fit(size_id)

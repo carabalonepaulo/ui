@@ -173,10 +173,10 @@ tabs :: proc(tabs: []Tab) {
 	state, state_just_created := ui.get(ui.id("root/tabs/hover"), []State, destroy = destroy_state)
 	if state_just_created do state^ = make([]State, len(tabs))
 
-	c := ui.col(ui.id("root/tabs"), size, {{.Absolute, font_size + (padding * 2)}, {.Flex, 1}})
+	c := ui.flex(size, .Y, {{.Absolute, font_size + (padding * 2)}, {.Flex, 1}})
 	if ui.next(&c) {
 		size := ui.get_available_size()
-		r := ui.row(size, constraints^)
+		r := ui.flex(size, .X, constraints^)
 		for i in 0 ..< len(tabs) {
 			if ui.next(&r) {
 				ui.bind(.Hovered, &state[i].hover)
@@ -204,13 +204,13 @@ tabs :: proc(tabs: []Tab) {
 
 layout_tab :: proc() {
 	size := ui.get_available_size()
-	r := ui.row(size, {{.Flex, 1}, {.Flex, 1}}, 32)
+	r := ui.flex(size, .X, {{.Flex, 1}, {.Flex, 1}}, 32)
 
 	if ui.next(&r) {
 		size := ui.get_available_size()
-		c := ui.col(ui.id("root/col"), size, {{.Flex, 1}, {.Flex, 1}, {.Flex, 1}}, 32)
+		c := ui.flex(size, .Y, {{.Flex, 1}, {.Flex, 1}, {.Flex, 1}}, 32)
 		if ui.next(&c) {
-			r := ui.row(ui.get_available_size(), {{.Flex, 1}, {.Flex, 1}})
+			r := ui.flex(ui.get_available_size(), .X, {{.Flex, 1}, {.Flex, 1}})
 			if ui.next(&r) do simple()
 			if ui.next(&r) do stack()
 		}
@@ -220,10 +220,10 @@ layout_tab :: proc() {
 
 	if ui.next(&r) {
 		size := ui.get_available_size()
-		c := ui.col(ui.id("root/right/col"), size, {{.Flex, 1}, {.Flex, 1}, {.Flex, 1}}, gap = 10)
-		if ui.next(&c) do center()
-		if ui.next(&c) do huge_list()
-		if ui.next(&c) do list()
+		f := ui.flex(size, .Y, {{.Flex, 1}, {.Flex, 1}, {.Flex, 1}}, gap = 10)
+		if ui.next(&f) do center()
+		if ui.next(&f) do huge_list()
+		if ui.next(&f) do list()
 	}
 }
 
@@ -321,19 +321,13 @@ row :: proc() {
 	ui.scope(ui.get_available_size())
 	ui.fill_rect(auto_cast rl.GRAY)
 
-	row := ui.row(ui.get_available_size(), {{.Flex, 1}, {.Flex, 5}}, gap = 10)
+	row := ui.flex(ui.get_available_size(), .X, {{.Flex, 1}, {.Flex, 5}}, gap = 10)
 
 	if ui.next(&row) {
 		ui.fill_rect(auto_cast rl.RED)
+		ui.padding(top = 10, bottom = 10, left = 10, right = 10)
 
-		col := ui.col(
-			ui.id("main/row", 1),
-			ui.get_available_size(),
-			{{.Flex, 1}, {.Flex, 2}},
-			10,
-			{10, 10, 10, 10},
-		)
-
+		col := ui.flex(ui.get_available_size(), .Y, {{.Flex, 1}, {.Flex, 2}}, 10)
 		if ui.next(&col) do ui.fill_rect(auto_cast rl.MAGENTA)
 		if ui.next(&col) do ui.fill_rect(auto_cast rl.BLUE)
 	}

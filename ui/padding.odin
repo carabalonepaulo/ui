@@ -6,11 +6,12 @@ begin_padding :: proc(
 	right: f32 = 0,
 	bottom: f32 = 0,
 	left: f32 = 0,
+	flags: Scope_Flags = {},
 ) {
 	size := size
 	if size == {AUTO, AUTO} do size = get_available_size()
 
-	begin_scope(size)
+	begin_scope(size, flags)
 	container := get_scope()
 	container.cursor += {left, top}
 
