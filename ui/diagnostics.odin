@@ -74,8 +74,7 @@ profiler :: proc() {
 
 	for value, i in rows {
 		if next(&c) {
-			row_id := id("internal/profiler/row", i)
-			r := row(row_id, get_available_size(), {{.Flex, 2}, {.Flex, 1}})
+			r := row(get_available_size(), {{.Flex, 2}, {.Flex, 1}})
 			if next(&r) do draw_text(0, value.label, {}, font_size, 1, {0, 0, 0, 255})
 			if next(&r) {
 				text := fmt.aprintf("%v", value.value, allocator = get_temp_allocator())

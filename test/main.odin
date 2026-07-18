@@ -176,7 +176,7 @@ tabs :: proc(tabs: []Tab) {
 	c := ui.col(ui.id("root/tabs"), size, {{.Absolute, font_size + (padding * 2)}, {.Flex, 1}})
 	if ui.next(&c) {
 		size := ui.get_available_size()
-		r := ui.row(ui.id("root/tabs/row"), size, constraints^)
+		r := ui.row(size, constraints^)
 		for i in 0 ..< len(tabs) {
 			if ui.next(&r) {
 				ui.bind(.Hovered, &state[i].hover)
@@ -204,13 +204,13 @@ tabs :: proc(tabs: []Tab) {
 
 layout_tab :: proc() {
 	size := ui.get_available_size()
-	r := ui.row(ui.id("root"), size, {{.Flex, 1}, {.Flex, 1}}, 32)
+	r := ui.row(size, {{.Flex, 1}, {.Flex, 1}}, 32)
 
 	if ui.next(&r) {
 		size := ui.get_available_size()
 		c := ui.col(ui.id("root/col"), size, {{.Flex, 1}, {.Flex, 1}, {.Flex, 1}}, 32)
 		if ui.next(&c) {
-			r := ui.row(ui.id("root/first/row"), ui.get_available_size(), {{.Flex, 1}, {.Flex, 1}})
+			r := ui.row(ui.get_available_size(), {{.Flex, 1}, {.Flex, 1}})
 			if ui.next(&r) do simple()
 			if ui.next(&r) do stack()
 		}
@@ -321,13 +321,7 @@ row :: proc() {
 	ui.scope(ui.get_available_size())
 	ui.fill_rect(auto_cast rl.GRAY)
 
-	row := ui.row(
-		ui.id("main/row"),
-		ui.get_available_size(),
-		{{.Flex, 1}, {.Flex, 5}},
-		gap = 10,
-		padding = {10, 10, 10, 10},
-	)
+	row := ui.row(ui.get_available_size(), {{.Flex, 1}, {.Flex, 5}}, gap = 10)
 
 	if ui.next(&row) {
 		ui.fill_rect(auto_cast rl.RED)
