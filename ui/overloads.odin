@@ -17,5 +17,6 @@ next :: proc {
 measure :: proc {
 	measure_fixed,
 	measure_dynamic,
+	measure_text,
 }
 

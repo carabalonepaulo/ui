@@ -241,31 +241,13 @@ text_tab :: proc() {
 		font_size      = 20,
 		font_color     = {0, 0, 0, 255},
 	}
-	ui.text(
-		ui.id("tab/text"),
-		ui.get_available_size(),
-		"aoisdjhaiodhaisodhioahdioashdioashdioahdioashdioashdioadhaiosdhaiosd Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc posuere sed ex dignissim luctus. Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Aliquam ac elementum lorem.",
-		opts,
-		{.Clip},
-	)
-}
 
-profiler :: proc() {
+	id := ui.id("tab/text")
 	size := ui.get_available_size()
-	ui.profiler()
-}
+	text := "aoisdjhaiodhaisodhioahdioashdioashdioahdioashdioashdioadhaiosdhaiosd Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc posuere sed ex dignissim luctus. Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Aliquam ac elementum lorem."
 
-stack :: proc() {
-	size := ui.get_available_size()
-	ui.draw_rect({}, size, {255, 255, 0, 255})
-
-	stack := ui.stack(ui.id("root/stack"), .X, 10)
-	for i in 1 ..= 3 {
-		if ui.next(&stack, {40, f32(i) * 40 / 2}) {
-			size := ui.get_available_size()
-			ui.draw_rect({}, size, {0, 255, 0, 255})
-		}
-	}
+	text_size := ui.measure(id, size, text, &opts)
+	ui.text(id, size, text, opts, {.Clip})
 }
 
 Simple_State :: struct {
@@ -315,6 +297,19 @@ simple :: proc() {
 	if state.is_pressed_out do fmt.println("is pressed out / hover =", state.is_hovered)
 	if state.is_released do fmt.println("is released / hover =", state.is_hovered)
 	if state.is_released_out do fmt.println("is released out / hover =", state.is_hovered)
+}
+
+stack :: proc() {
+	size := ui.get_available_size()
+	ui.draw_rect({}, size, {255, 255, 0, 255})
+
+	stack := ui.stack(ui.id("root/stack"), .X, 10, {.Clip})
+	for i in 1 ..= 3 {
+		if ui.next(&stack, {40, f32(i) * 40 / 2}) {
+			size := ui.get_available_size()
+			ui.draw_rect({}, size, {0, 255, 0, 255})
+		}
+	}
 }
 
 row :: proc() {

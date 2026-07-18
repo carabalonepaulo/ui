@@ -1,6 +1,5 @@
 package ui
 
-import "core:image/netpbm"
 Layout_Kind :: enum {
 	Absolute,
 	Flex,
@@ -11,14 +10,9 @@ Layout_Item :: struct {
 	value: f32,
 }
 
-Flex_Dir :: enum {
-	X,
-	Y,
-}
-
 Flex :: struct {
 	inner_flags:   Scope_Flags,
-	dir:           Flex_Dir,
+	dir:           Dir,
 	current_child: int,
 	computed:      []f32,
 	gap:           f32,
@@ -26,7 +20,7 @@ Flex :: struct {
 
 begin_flex :: proc(
 	size: Vec2,
-	dir: Flex_Dir,
+	dir: Dir,
 	items: []Layout_Item,
 	gap: f32 = 0,
 	flags: Scope_Flags = {},
@@ -104,7 +98,7 @@ flex_next :: proc(state: ^Flex) -> bool {
 @(deferred_none = end_scope)
 flex :: proc(
 	size: Vec2,
-	dir: Flex_Dir,
+	dir: Dir,
 	items: []Layout_Item,
 	gap: f32 = 0,
 	flags: Scope_Flags = {},

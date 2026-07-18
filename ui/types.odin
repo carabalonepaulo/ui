@@ -3,6 +3,11 @@ package ui
 import "core:container/queue"
 import "core:mem"
 
+Dir :: enum {
+	X,
+	Y,
+}
+
 Texture :: distinct u64
 
 Font :: distinct u64

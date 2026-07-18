@@ -1,6 +1,5 @@
 package ui
 
-import "core:crypto/ristretto255"
 import "core:fmt"
 import "core:time"
 
@@ -44,37 +43,27 @@ profiler :: proc() {
 		{"Store Count", len(ctx.store.entries)},
 	}
 
-	font_size: f32 = 20
-	gap: f32 = 5
-	width: f32 = 300
-	pad: f32 = 10
+	FONT_SIZE :: 20
+	GAP :: 5
+	WIDTH :: 300
+	PADDING :: 10
+	BG_COLOR :: Color{0, 0, 0, 200}
+	FONT_COLOR :: Color{200, 200, 200, 255}
 
-	height := measure(font_size, len(rows), gap, {pad, pad})
-	scope({width, height})
-	fill_rect({0, 0, 0, 200})
+	height := measure(FONT_SIZE, len(rows), GAP, Vec2{PADDING, PADDING})
+	scope({WIDTH, height})
+	fill_rect(BG_COLOR)
 
-	padding(top = pad, bottom = pad, left = pad, right = pad)
+	padding(PADDING, PADDING, PADDING, PADDING)
 
-	constraints, just_created := get(
-		id("internal/profiler/constraints"),
-		[]Layout_Item,
-		destroy = proc(constraints: ^[]Layout_Item) {delete(constraints^)},
-	)
-	if just_created {
-		slice := make([]Layout_Item, len(rows))
-		for i in 0 ..< len(slice) do slice[i] = {.Absolute, font_size}
-		constraints^ = slice
-	}
-
-	c := stack(id("internal/profiler/stack"), .Y, gap)
-
+	c := stack(id("internal/profiler/stack"), .Y, GAP)
 	for value, i in rows {
-		if next(&c, Vec2{width, font_size}) {
+		if next(&c, {WIDTH, FONT_SIZE}) {
 			r := flex(get_available_size(), .X, {{.Flex, 2}, {.Flex, 1}})
-			if next(&r) do draw_text(0, value.label, {}, font_size, 1, {200, 200, 200, 255})
+			if next(&r) do draw_text(0, value.label, {}, FONT_SIZE, 1, FONT_COLOR)
 			if next(&r) {
 				text := fmt.aprintf("%v", value.value, allocator = get_temp_allocator())
-				draw_text(0, text, {}, font_size, 1, {200, 200, 200, 255})
+				draw_text(0, text, {}, FONT_SIZE, 1, FONT_COLOR)
 			}
 		}
 	}

@@ -257,6 +257,16 @@ to_local_pos :: #force_inline proc(screen: Vec2) -> Vec2 {
 	return to_local_pos_at(ctx.current_scope, screen)
 }
 
+is_scroll_at_start :: #force_inline proc(axis: Dir, id := -1) -> bool {
+	return get_scope(id).offset[axis] == 0
+}
+
+is_scroll_at_end :: #force_inline proc(axis: Dir, id := -1) -> bool {
+	scope := get_scope(id)
+	max_offset := max(scope.content_size[axis] - scope.size[axis], 0)
+	return scope.offset[axis] >= max_offset
+}
+
 measure_fixed :: proc(size: f32, count: int, gap: f32 = 0, padding: [2]f32 = {0, 0}) -> f32 {
 	if count <= 0 do return 0
 	count := f32(count)

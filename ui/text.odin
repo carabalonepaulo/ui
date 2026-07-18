@@ -70,7 +70,7 @@ text :: proc(uid: Id, size: Vec2, text: string, opts: Text_Options, flags: Scope
 		bind(.Scroll_Y, get(id(uid, 'y'), f32))
 	}
 
-	text_id := id(uid, text, opts.font, opts.font_size, opts.letter_spacing, opts.line_spacing)
+	text_id := get_text_id(uid, text, &opts)
 	text_size := get_text_size(text_id, text, &opts)
 
 	if (text_size.x < container_size.x && text_size.y < container_size.y) || opts.wrap == .None {
@@ -218,5 +218,47 @@ get_token_cache :: proc(uid: Id, text: string, opts: ^Text_Options) -> []Cached_
 	}
 
 	return cache^[:]
+}
+
+get_text_id :: #force_inline proc(uid: Id, text: string, opts: ^Text_Options) -> Id {
+	return id(uid, text, opts.font, opts.font_size, opts.letter_spacing, opts.line_spacing)
+}
+
+measure_text :: proc(uid: Id, container_size: Vec2, text: string, opts: ^Text_Options) -> Vec2 {
+	text_id := get_text_id(uid, text, opts)
+	text_size := get_text_size(text_id, text, opts)
+
+	if (text_size.x < container_size.x && text_size.y < container_size.y) || opts.wrap == .None {
+		return text_size
+	}
+
+	layout_size_id := id(text_id, container_size.x, "layout_size")
+	layout_size, just_created := get(layout_size_id, Vec2)
+	if just_created {
+		available := container_size.x
+		max_width: f32 = 0
+		cursor: Vec2 = {}
+
+		tokens := get_token_cache(id(text_id, "cache"), text, opts)
+		for i in 0 ..< len(tokens) {
+			token := text[tokens[i].start:tokens[i].end]
+			token_size := tokens[i].size
+			step := tokens[i].step
+
+			if cursor.x > 0 && available - token_size.x < 0 {
+				if cursor.x > max_width do max_width = cursor.x
+				cursor.y += opts.font_size + opts.line_spacing
+				cursor.x = 0
+				available = container_size.x
+			}
+
+			cursor.x += step
+			available -= step
+		}
+
+		final_width := container_size.x != AUTO ? clamp(max_width, 0, container_size.x) : max_width
+		layout_size^ = {final_width, cursor.y + opts.font_size}
+	}
+	return layout_size^
 }
 

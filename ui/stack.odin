@@ -1,20 +1,15 @@
 package ui
 
-Stack_Dir :: enum {
-	X,
-	Y,
-}
-
 Stack :: struct {
 	inner_flags: Scope_Flags,
-	dir:         Stack_Dir,
+	dir:         Dir,
 	fit:         Fit,
 	gap:         f32,
 }
 
 begin_stack :: proc(
 	uid: Id,
-	dir: Stack_Dir,
+	dir: Dir,
 	gap: f32 = 0,
 	flags: Scope_Flags = {},
 	inner_flags: Scope_Flags = {},
@@ -44,7 +39,7 @@ stack_next :: proc(stack: ^Stack, size: Vec2) -> bool {
 @(deferred_out = end_stack)
 stack :: proc(
 	uid: Id,
-	dir: Stack_Dir,
+	dir: Dir,
 	gap: f32 = 0,
 	flags: Scope_Flags = {},
 	inner_flags: Scope_Flags = {},
