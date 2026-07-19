@@ -228,7 +228,7 @@ layout_tab :: proc() {
 }
 
 text_tab :: proc() {
-	ui.scope({210, 100})
+	ui.scope_at({10, 10}, {210, 100})
 	ui.fill_rect({255, 255, 255, 255})
 	ui.padding(top = 10, bottom = 10, right = 10, left = 10)
 
@@ -246,7 +246,9 @@ text_tab :: proc() {
 	size := ui.get_available_size()
 	text := "aoisdjhaiodhaisodhioahdioashdioashdioahdioashdioashdioadhaiosdhaiosd Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc posuere sed ex dignissim luctus. Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Aliquam ac elementum lorem."
 
-	text_size := ui.measure(id, size, text, &opts)
+	text_size := ui.measure(id, size, text, &opts, {10, 10, 10, 10})
+	ui.draw_rect({-10, -10}, text_size, {255, 0, 0, 50})
+
 	ui.text(id, size, text, opts, {.Clip})
 }
 
@@ -397,7 +399,7 @@ huge_list :: proc() {
 	size := ui.get_available_size()
 	ui.draw_rect({}, size, {40, 40, 40, 255})
 
-	COUNT :: 100_000
+	COUNT :: 1_000_000
 
 	states, states_just_created := ui.get(
 		ui.id("huge_list/states"),

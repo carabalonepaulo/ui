@@ -22,7 +22,13 @@ end_padding :: proc() {
 }
 
 @(deferred_none = end_padding)
-padding :: proc(top: f32 = 0, right: f32 = 0, bottom: f32 = 0, left: f32 = 0) {
-	begin_padding(top, right, bottom, left)
+padding :: proc(
+	top: f32 = 0,
+	right: f32 = 0,
+	bottom: f32 = 0,
+	left: f32 = 0,
+	flags: Scope_Flags = {},
+) {
+	begin_padding(top, right, bottom, left, flags)
 }
 

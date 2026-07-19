@@ -17,7 +17,6 @@ init_context :: proc(callbacks: Callbacks, cap: int, frame_memory: int) -> bool 
 
 	ctx.callbacks = callbacks
 	ctx.interest_buffer = make([][Interest]rawptr, cap)
-	ctx.touched_buffer = make([]Interests, cap)
 	ctx.buffer = make([]Scope, cap)
 	ctx.current_scope = -1
 
@@ -32,7 +31,6 @@ init_context :: proc(callbacks: Callbacks, cap: int, frame_memory: int) -> bool 
 deinit_context :: proc() {
 	deinit_store(&ctx.store)
 	delete(ctx.interest_buffer)
-	delete(ctx.touched_buffer)
 	delete(ctx.buffer)
 	queue.destroy(&ctx.deferred_pre)
 	queue.destroy(&ctx.deferred_post)

@@ -110,7 +110,6 @@ Context :: struct {
 	scope_count:     int,
 	buffer:          []Scope,
 	interest_buffer: [][Interest]rawptr,
-	touched_buffer:  []Interests,
 	//
 	deferred_pre:    queue.Queue(Deferred),
 	deferred_post:   queue.Queue(Deferred),

@@ -224,12 +224,18 @@ get_text_id :: #force_inline proc(uid: Id, text: string, opts: ^Text_Options) ->
 	return id(uid, text, opts.font, opts.font_size, opts.letter_spacing, opts.line_spacing)
 }
 
-measure_text :: proc(uid: Id, container_size: Vec2, text: string, opts: ^Text_Options) -> Vec2 {
+measure_text :: proc(
+	uid: Id,
+	container_size: Vec2,
+	text: string,
+	opts: ^Text_Options,
+	padding: [4]f32 = {0, 0, 0, 0},
+) -> Vec2 {
 	text_id := get_text_id(uid, text, opts)
 	text_size := get_text_size(text_id, text, opts)
 
 	if (text_size.x < container_size.x && text_size.y < container_size.y) || opts.wrap == .None {
-		return text_size
+		return {text_size.x + padding[1] + padding[3], text_size.y + padding[0] + padding[2]}
 	}
 
 	layout_size_id := id(text_id, container_size.x, "layout_size")
@@ -259,6 +265,8 @@ measure_text :: proc(uid: Id, container_size: Vec2, text: string, opts: ^Text_Op
 		final_width := container_size.x != AUTO ? clamp(max_width, 0, container_size.x) : max_width
 		layout_size^ = {final_width, cursor.y + opts.font_size}
 	}
-	return layout_size^
+
+	size := layout_size^
+	return {size.x + padding[1] + padding[3], size.y + padding[0] + padding[2]}
 }
 
