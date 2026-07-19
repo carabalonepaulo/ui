@@ -130,7 +130,7 @@ main :: proc() {
 
 Tab :: struct {
 	text: string,
-	comp: proc(),
+	fn:   proc(),
 }
 
 tabs :: proc(tabs: []Tab) {
@@ -139,59 +139,52 @@ tabs :: proc(tabs: []Tab) {
 		pressed: bool,
 	}
 
-	font_color := ui.Color{255, 255, 255, 200}
-	font_size: f32 = 20
-	spacing: f32 = 1
-	padding: f32 = 10
+	FONT_COLOR :: ui.Color{255, 255, 255, 200}
+	FONT_SIZE :: 20
+	LABEL_SIZE :: ui.Vec2{ui.AUTO, FONT_SIZE}
+	PADDING :: [4]f32{10, 20, 10, 20}
 
-	tab_bg_color: ui.Color = {31, 31, 31, 255}
-	tab_bg_hover_color: ui.Color = {41, 41, 41, 255}
-
-	content_bg_color: ui.Color = {21, 21, 21, 255}
-
-	size := ui.get_available_size()
-	ui.draw_rect({}, size, tab_bg_color)
+	BG_COLOR :: ui.Color{31, 31, 31, 255}
+	BG_HOVER_COLOR :: ui.Color{41, 41, 41, 255}
+	CONTENT_BG_COLOR :: ui.Color{21, 21, 21, 255}
 
 	current := ui.get(ui.id("root/tabs/current"), int, FIRST_TAB)
-
-	destroy_constraints := proc(constraints: ^[]ui.Layout_Item) {delete(constraints^)}
-	constraints, just_created := ui.get(
-		ui.id("root/tabs/constraints"),
-		[]ui.Layout_Item,
-		destroy = destroy_constraints,
-	)
-	if just_created {
-		slice := make([]ui.Layout_Item, len(tabs))
-		for i in 0 ..< len(slice) {
-			text_size := ui.ctx.callbacks.measure_text(0, tabs[i].text, font_size, spacing)
-			slice[i] = {.Absolute, text_size.x + padding * 2}
-		}
-		constraints^ = slice
-	}
 
 	destroy_state := proc(hover: ^[]State) {delete(hover^)}
 	state, state_just_created := ui.get(ui.id("root/tabs/hover"), []State, destroy = destroy_state)
 	if state_just_created do state^ = make([]State, len(tabs))
 
-	c := ui.flex(size, .Y, {{.Absolute, font_size + (padding * 2)}, {.Flex, 1}})
-	if ui.next(&c) {
-		size := ui.get_available_size()
-		r := ui.flex(size, .X, constraints^)
-		for i in 0 ..< len(tabs) {
-			if ui.next(&r) {
-				ui.bind(.Hovered, &state[i].hover)
-				ui.bind(.Pressed, &state[i].pressed)
+	opts := ui.Text_Options {
+		letter_spacing = 1,
+		font_color     = FONT_COLOR,
+		font_size      = FONT_SIZE,
+	}
 
-				ui.fill_rect(state[i].hover ? tab_bg_hover_color : tab_bg_color)
-				ui.draw_text(0, tabs[i].text, {padding, padding}, font_size, spacing, font_color)
-			}
+	constraints := []ui.Layout_Item {
+		{.Absolute, FONT_SIZE + ui.measure_padding(PADDING, .Y)},
+		{.Flex, 1},
+	}
+	c := ui.flex(ui.get_available_size(), .Y, constraints)
+	if ui.next(&c) {
+		ui.fill_rect(BG_COLOR)
+		s := ui.stack(ui.id("root/tabs/stack"), .X)
+		for tab, i in tabs {
+			id := ui.id("root/tabs/label", i)
+
+			ui.next(&s, ui.measure_text(id, LABEL_SIZE, tab.text, &opts, PADDING))
+			ui.bind(.Hovered, &state[i].hover)
+			ui.bind(.Pressed, &state[i].pressed)
+
+			if state[i].hover do ui.fill_rect(BG_HOVER_COLOR)
+
+			ui.padding(PADDING[0], PADDING[1], PADDING[2], PADDING[3])
+			ui.text(id, LABEL_SIZE, tab.text, opts)
 		}
 	}
 
 	if ui.next(&c) {
-		size := ui.get_available_size()
-		ui.draw_rect({}, size, content_bg_color)
-		tabs[current^].comp()
+		ui.fill_rect(CONTENT_BG_COLOR)
+		tabs[current^].fn()
 	}
 
 	for i in 0 ..< len(tabs) {
@@ -399,7 +392,7 @@ huge_list :: proc() {
 	size := ui.get_available_size()
 	ui.draw_rect({}, size, {40, 40, 40, 255})
 
-	COUNT :: 1_000_000
+	COUNT :: 100_000
 
 	states, states_just_created := ui.get(
 		ui.id("huge_list/states"),
@@ -414,7 +407,7 @@ huge_list :: proc() {
 	offset := ui.get(ui.id("huge_list/offset"), f32)
 	ui.bind(.Scroll_Y, offset)
 
-	s := ui.stack(ui.id("huge_list/stack"), .Y)
+	s := ui.stack(ui.id("huge_list/stack"), .Y, 10)
 	for i in 0 ..< COUNT {
 		if ui.next(&s, {size.x, 20}) {
 			size := ui.get_available_size()

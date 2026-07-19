@@ -267,6 +267,16 @@ is_scroll_at_end :: #force_inline proc(axis: Dir, id := -1) -> bool {
 	return scope.offset[axis] >= max_offset
 }
 
+measure_padding :: proc(padding: [4]f32, dir: Dir) -> (val: f32) {
+	switch dir {
+	case .X:
+		val = padding[1] + padding[3]
+	case .Y:
+		val = padding[0] + padding[2]
+	}
+	return
+}
+
 measure_fixed :: proc(size: f32, count: int, gap: f32 = 0, padding: [2]f32 = {0, 0}) -> f32 {
 	if count <= 0 do return 0
 	count := f32(count)
