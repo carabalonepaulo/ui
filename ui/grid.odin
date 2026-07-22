@@ -52,7 +52,7 @@ grid :: proc(
 
 Grid_State :: struct($T: typeid) {
 	ud: T,
-	fn: proc(i: int, size: Vec2, ud: T),
+	fn: proc(i: int, ud: T),
 }
 
 grid_with_poly :: proc(
@@ -62,22 +62,14 @@ grid_with_poly :: proc(
 	item_base_size: Vec2,
 	gap: Vec2,
 	ud: $T,
-	item: proc(i: int, size: Vec2, ud: T),
+	item: proc(i: int, ud: T),
 ) {
 	ptr := temp(Grid_State(T))
 	ptr^ = Grid_State(T){ud, item}
 
-	grid(
-		uid,
-		container_size,
-		items_count,
-		item_base_size,
-		gap,
-		ptr,
-		proc(i: int, cell_size: Vec2, ud: rawptr) {
-			st := (^Grid_State(T))(ud)
-			st.fn(i, cell_size, st.ud)
-		},
-	)
+	grid(uid, container_size, items_count, item_base_size, gap, ptr, proc(i: int, ud: rawptr) {
+		st := (^Grid_State(T))(ud)
+		st.fn(i, st.ud)
+	})
 }
 

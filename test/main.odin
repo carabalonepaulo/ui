@@ -29,7 +29,50 @@ CALLBACKS :: ui.Callbacks {
 		return transmute(ui.Vec2)(rl.GetMousePosition())
 	},
 	get_mouse_wheel = proc() -> ui.Vec2 {
-		return transmute(ui.Vec2)(rl.GetMouseWheelMoveV()) * scroll_modifier
+		@(static) current_offset: f32 = 0.0
+		@(static) target_offset: f32 = 0.0
+		@(static) velocity: f32 = 0.0
+		@(static) last_time: f64 = 0.0
+		@(static) last_id: int = -1
+
+		now := rl.GetTime()
+		dt := f32(now - last_time) if last_time > 0.0 else f32(rl.GetFrameTime())
+		last_time = now
+
+		if dt <= 0.0 || dt > 0.1 do dt = 1.0 / 60.0
+
+		wheel_raw := rl.GetMouseWheelMoveV().y
+
+		scroll_impulse_scale := 20.0 + scroll_modifier
+
+		if wheel_raw != 0.0 {
+			target_offset += wheel_raw * scroll_impulse_scale
+		}
+
+		stiffness :: 150.0
+		damping :: 25.0
+
+		force := (target_offset - current_offset) * stiffness - velocity * damping
+		velocity += force * dt
+
+		prev_offset := current_offset
+		current_offset += velocity * dt
+
+		dist_to_target := abs(target_offset - current_offset)
+		if wheel_raw == 0.0 && (dist_to_target < 0.5) {
+			current_offset = target_offset
+			velocity = 0.0
+		}
+
+		frame_delta := current_offset - prev_offset
+
+		if wheel_raw == 0.0 && dist_to_target < 0.1 {
+			current_offset = 0.0
+			target_offset = 0.0
+			velocity = 0.0
+		}
+
+		return ui.Vec2{0, frame_delta}
 	},
 	//
 	is_mouse_pressed = proc(btn: ui.Mouse_Button) -> bool {
@@ -243,17 +286,24 @@ text_tab :: proc() {
 }
 
 grid_tab :: proc() {
+	COUNT :: 100_000
 	GAP :: 20
+
+	@(static) hover: [COUNT]bool
+
 	ui.padding(GAP, GAP, GAP, GAP)
-	ui.grid(
+	ui.grid_with_poly(
 		ui.id("tabs/grid"),
 		ui.get_available_size(),
-		1000,
+		COUNT,
 		{180, 240},
 		GAP,
-		nil,
-		proc(i: int, ud: rawptr) {
-			ui.fill_rect({255, 0, 0, 50})
+		hover[:],
+		proc(i: int, hover: []bool) {
+			ui.bind(.Hovered, &hover[i])
+			bg_color: ui.Color = hover[i] ? {55, 109, 176, 50} : {191, 70, 54, 50}
+			ui.fill_rect(bg_color)
+
 			ui.draw_text(
 				0,
 				fmt.aprintf("%v", i, allocator = ui.get_temp_allocator()),
