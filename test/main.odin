@@ -120,7 +120,7 @@ main :: proc() {
 		w, h := f32(rl.GetScreenWidth()), f32(rl.GetScreenHeight())
 		ui.scope({w, h})
 
-		tabs([]Tab{{"Layout", layout_tab}, {"Text", text_tab}})
+		tabs([]Tab{{"Layout", layout_tab}, {"Text", text_tab}, {"Grid", grid_tab}})
 
 		debug := ui.get(ui.id("debug"), bool, false)
 		if rl.IsKeyPressed(.D) do debug^ = !(debug^)
@@ -139,11 +139,8 @@ tabs :: proc(tabs: []Tab) {
 		pressed: bool,
 	}
 
-	FONT_COLOR :: ui.Color{255, 255, 255, 200}
-	FONT_SIZE :: 20
-	LABEL_SIZE :: ui.Vec2{ui.AUTO, FONT_SIZE}
+	LABEL_SIZE :: ui.Vec2{ui.AUTO, ui.AUTO}
 	PADDING :: [4]f32{10, 20, 10, 20}
-
 	BG_COLOR :: ui.Color{31, 31, 31, 255}
 	BG_HOVER_COLOR :: ui.Color{41, 41, 41, 255}
 	CONTENT_BG_COLOR :: ui.Color{21, 21, 21, 255}
@@ -156,12 +153,12 @@ tabs :: proc(tabs: []Tab) {
 
 	opts := ui.Text_Options {
 		letter_spacing = 1,
-		font_color     = FONT_COLOR,
-		font_size      = FONT_SIZE,
+		font_color     = {255, 255, 255, 200},
+		font_size      = 20,
 	}
 
 	constraints := []ui.Layout_Item {
-		{.Absolute, FONT_SIZE + ui.measure_padding(PADDING, .Y)},
+		{.Absolute, opts.font_size + ui.measure_padding(PADDING, .Y)},
 		{.Flex, 1},
 	}
 	c := ui.flex(ui.get_available_size(), .Y, constraints)
@@ -243,6 +240,30 @@ text_tab :: proc() {
 	ui.draw_rect({-10, -10}, text_size, {255, 0, 0, 50})
 
 	ui.text(id, size, text, opts, {.Clip})
+}
+
+grid_tab :: proc() {
+	GAP :: 20
+	ui.padding(GAP, GAP, GAP, GAP)
+	ui.grid(
+		ui.id("tabs/grid"),
+		ui.get_available_size(),
+		1000,
+		{180, 240},
+		GAP,
+		nil,
+		proc(i: int, ud: rawptr) {
+			ui.fill_rect({255, 0, 0, 50})
+			ui.draw_text(
+				0,
+				fmt.aprintf("%v", i, allocator = ui.get_temp_allocator()),
+				{0, 0},
+				20,
+				1,
+				{255, 255, 255, 255},
+			)
+		},
+	)
 }
 
 Simple_State :: struct {

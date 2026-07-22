@@ -1,0 +1,83 @@
+package ui
+
+grid :: proc(
+	uid: Id,
+	container_size: Vec2,
+	items_count: int,
+	item_base_size: Vec2,
+	gap: Vec2,
+	ud: rawptr,
+	item: proc(i: int, ud: rawptr),
+) {
+	scope(container_size, {.Clip})
+	container := get_scope()
+
+	offset := get(id(uid, "offset"), f32)
+	bind(.Scroll_Y, offset)
+
+	aspect_ratio := item_base_size.x / item_base_size.y
+	columns := max(int((container_size.x + gap.x) / (item_base_size.x + gap.x)), 1)
+
+	cell_width := (container_size.x - f32(columns - 1) * gap.x) / f32(columns)
+	cell_height := cell_width / aspect_ratio
+	cell_size := Vec2{cell_width, cell_height}
+
+	pitch_y := cell_height + gap.y
+	rows_count := (items_count + columns - 1) / columns
+
+	skip_rows := max(int(offset^ / pitch_y), 0)
+	visible_rows := int(container_size.y / pitch_y) + 2
+
+	container.cursor += {0, f32(skip_rows) * pitch_y}
+
+	start_row := skip_rows
+	end_row := min(skip_rows + visible_rows, rows_count)
+
+	for r in start_row ..< end_row {
+		for c in 0 ..< columns {
+			item_idx := r * columns + c
+			if item_idx >= items_count do break
+
+			container.cursor.x = f32(c) * (cell_width + gap.x)
+
+			scope(cell_size)
+			item(item_idx, ud)
+		}
+
+		container.cursor = {0, container.cursor.y + pitch_y}
+	}
+
+	container.content_size = {0, max(f32(rows_count) * pitch_y - gap.y, 0)}
+}
+
+Grid_State :: struct($T: typeid) {
+	ud: T,
+	fn: proc(i: int, size: Vec2, ud: T),
+}
+
+grid_with_poly :: proc(
+	uid: Id,
+	container_size: Vec2,
+	items_count: int,
+	item_base_size: Vec2,
+	gap: Vec2,
+	ud: $T,
+	item: proc(i: int, size: Vec2, ud: T),
+) {
+	ptr := temp(Grid_State(T))
+	ptr^ = Grid_State(T){ud, item}
+
+	grid(
+		uid,
+		container_size,
+		items_count,
+		item_base_size,
+		gap,
+		ptr,
+		proc(i: int, cell_size: Vec2, ud: rawptr) {
+			st := (^Grid_State(T))(ud)
+			st.fn(i, cell_size, st.ud)
+		},
+	)
+}
+

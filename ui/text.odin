@@ -33,7 +33,8 @@ Text_Options :: struct {
 }
 
 text :: proc(uid: Id, size: Vec2, text: string, opts: Text_Options, flags: Scope_Flags = {}) {
-	assert(!(size.x == AUTO && size.y == AUTO), "only one axis can be auto")
+	size := size
+	if size.x == AUTO && size.y == AUTO do size.y = opts.font_size
 
 	text := text
 	opts := opts
