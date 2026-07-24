@@ -191,7 +191,7 @@ tabs :: proc(tabs: []Tab) {
 	}
 
 	LABEL_SIZE :: ui.Vec2{ui.AUTO, ui.AUTO}
-	PADDING :: [4]f64{10, 20, 10, 20}
+	PADDING :: ui.Padding{10, 20, 10, 20}
 	BG_COLOR :: ui.Color{31, 31, 31, 255}
 	BG_HOVER_COLOR :: ui.Color{41, 41, 41, 255}
 	CONTENT_BG_COLOR :: ui.Color{21, 21, 21, 255}
@@ -225,7 +225,7 @@ tabs :: proc(tabs: []Tab) {
 
 			if state[i].hover do ui.fill_rect(BG_HOVER_COLOR)
 
-			ui.padding(PADDING[0], PADDING[1], PADDING[2], PADDING[3])
+			ui.padding(PADDING)
 			ui.text(id, LABEL_SIZE, tab.text, opts)
 		}
 	}
@@ -271,7 +271,7 @@ layout_tab :: proc() {
 text_tab :: proc() {
 	ui.scope_at({10, 10}, {210, 100})
 	ui.fill_rect({255, 255, 255, 255})
-	ui.padding(top = 10, bottom = 10, right = 10, left = 10)
+	ui.padding({10, 10, 10, 10})
 
 	opts := ui.Text_Options {
 		scroll         = .Y,
@@ -299,7 +299,7 @@ grid_tab :: proc() {
 
 	@(static) hover: [COUNT]bool
 
-	ui.padding(GAP, GAP, GAP, GAP)
+	ui.padding({GAP, GAP, GAP, GAP})
 	ui.grid_with_poly(
 		ui.id("tabs/grid"),
 		ui.get_available_size(),
@@ -395,7 +395,7 @@ row :: proc() {
 
 	if ui.next(&row) {
 		ui.fill_rect(auto_cast rl.RED)
-		ui.padding(top = 10, bottom = 10, left = 10, right = 10)
+		ui.padding({10, 10, 10, 10})
 
 		col := ui.flex(ui.get_available_size(), .Y, {{.Flex, 1}, {.Flex, 2}}, 10)
 		if ui.next(&col) do ui.fill_rect(auto_cast rl.MAGENTA)
@@ -405,7 +405,7 @@ row :: proc() {
 	if ui.next(&row) {
 		ui.fill_rect(auto_cast rl.GREEN)
 
-		ui.padding(top = 10, bottom = 10, left = 10, right = 10)
+		ui.padding({10, 10, 10, 10})
 		ui.fill_rect(auto_cast rl.MAGENTA)
 	}
 }
@@ -481,7 +481,7 @@ huge_list :: proc() {
 	)
 	if states_just_created do states^ = make([]bool, COUNT)
 
-	ui.padding(top = 10, bottom = 10, left = 10, right = 10)
+	ui.padding({10, 10, 10, 10})
 
 	ui.scope(ui.get_available_size(), {.Clip})
 	offset := ui.get(ui.id("huge_list/offset"), f64)
@@ -534,7 +534,7 @@ list :: proc() {
 	}
 
 	ui.fill_rect({40, 40, 40, 255})
-	ui.padding(top = 10, bottom = 10, left = 10, right = 10)
+	ui.padding({10, 10, 10, 10})
 
 	ui.list_with_poly(ui.id("list"), ui.get_available_size(), count, 20, 10, items, proc(i: int, items: ^[]State) {
 		ui.bind(.Hovered, &items[i].is_hover)

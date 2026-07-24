@@ -18,6 +18,13 @@ Rect :: [4]i32
 
 Color :: [4]u8
 
+Padding :: struct {
+	top:    f64,
+	right:  f64,
+	bottom: f64,
+	left:   f64,
+}
+
 Callbacks :: struct {
 	get_delta_time:    proc() -> f64,
 	get_default_font:  proc() -> Font,

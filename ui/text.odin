@@ -230,13 +230,16 @@ measure_text :: proc(
 	container_size: Vec2,
 	text: string,
 	opts: ^Text_Options,
-	padding: [4]f64 = {0, 0, 0, 0},
+	padding: Padding = {},
 ) -> Vec2 {
 	text_id := get_text_id(uid, text, opts)
 	text_size := get_text_size(text_id, text, opts)
 
 	if (text_size.x < container_size.x && text_size.y < container_size.y) || opts.wrap == .None {
-		return {text_size.x + padding[1] + padding[3], text_size.y + padding[0] + padding[2]}
+		return {
+			text_size.x + padding.left + padding.right,
+			text_size.y + padding.top + padding.bottom,
+		}
 	}
 
 	layout_size_id := id(text_id, container_size.x, "layout_size")
@@ -268,6 +271,6 @@ measure_text :: proc(
 	}
 
 	size := layout_size^
-	return {size.x + padding[1] + padding[3], size.y + padding[0] + padding[2]}
+	return {size.x + padding.left + padding.right, size.y + padding.top + padding.bottom}
 }
 

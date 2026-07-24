@@ -46,15 +46,15 @@ profiler :: proc() {
 	FONT_SIZE :: 20
 	GAP :: 5
 	WIDTH :: 300
-	PADDING :: 10
+	PADDING :: Padding{10, 10, 10, 10}
 	BG_COLOR :: Color{0, 0, 0, 200}
 	FONT_COLOR :: Color{200, 200, 200, 255}
 
-	height := measure(FONT_SIZE, len(rows), GAP, Vec2{PADDING, PADDING})
+	height := measure_fixed(FONT_SIZE, len(rows), GAP, {PADDING.top, PADDING.bottom})
 	scope({WIDTH, height})
 	fill_rect(BG_COLOR)
 
-	padding(PADDING, PADDING, PADDING, PADDING)
+	padding(PADDING)
 
 	c := stack(id("internal/profiler/stack"), .Y, GAP)
 	for value, i in rows {

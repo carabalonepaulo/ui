@@ -267,12 +267,12 @@ is_scroll_at_end :: #force_inline proc(axis: Dir, id := -1) -> bool {
 	return scope.offset[axis] >= max_offset
 }
 
-measure_padding :: proc(padding: [4]f64, dir: Dir) -> (val: f64) {
+measure_padding :: proc(padding: Padding, dir: Dir) -> (val: f64) {
 	switch dir {
 	case .X:
-		val = padding[1] + padding[3]
+		val = padding.left + padding.right
 	case .Y:
-		val = padding[0] + padding[2]
+		val = padding.top + padding.bottom
 	}
 	return
 }
