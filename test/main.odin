@@ -101,7 +101,7 @@ CALLBACKS :: ui.Callbacks {
 		return rl.IsKeyUp(transmute(rl.KeyboardKey)(key))
 	},
 	//
-	draw_rect = proc(x, y, w, h: f32, color: ui.Color) {
+	draw_rect = proc(x, y, w, h: f64, color: ui.Color) {
 		rl.DrawRectangle(
 			(c.int)(math.floor(x)),
 			(c.int)(math.floor(y)),
@@ -110,10 +110,17 @@ CALLBACKS :: ui.Callbacks {
 			transmute(rl.Color)(color),
 		)
 	},
-	draw_text = proc(font: ui.Font, text: string, x, y, size, spacing: f32, color: ui.Color) {
+	draw_text = proc(font: ui.Font, text: string, x, y, size, spacing: f64, color: ui.Color) {
 		default := rl.GetFontDefault()
 		text_cstr := strings.clone_to_cstring(text, ui.get_temp_allocator())
-		rl.DrawTextEx(default, text_cstr, {x, y}, size, spacing, transmute(rl.Color)(color))
+		rl.DrawTextEx(
+			default,
+			text_cstr,
+			[2]f32{f32(x), f32(y)},
+			f32(size),
+			f32(spacing),
+			transmute(rl.Color)(color),
+		)
 	},
 	//
 	enable_scissors = proc(x, y, w, h: i32) {

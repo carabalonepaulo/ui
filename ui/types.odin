@@ -39,9 +39,9 @@ Callbacks :: struct {
 	//
 	measure_text:      proc(font: Font, text: string, font_size: f64, spacing: f64) -> Vec2,
 	//
-	draw_text:         proc(font: Font, text: string, x, y, size, spacing: f32, color: Color),
-	draw_rect:         proc(x, y, w, h: f32, color: Color),
-	draw_texture:      proc(texture: Texture, src: [4]f32, dst: [4]f32, color: Color),
+	draw_text:         proc(font: Font, text: string, x, y, size, spacing: f64, color: Color),
+	draw_rect:         proc(x, y, w, h: f64, color: Color),
+	draw_texture:      proc(texture: Texture, src: [4]f64, dst: [4]f64, color: Color),
 	//
 	enable_scissors:   proc(x, y, w, h: i32),
 	disable_scissors:  proc(),
