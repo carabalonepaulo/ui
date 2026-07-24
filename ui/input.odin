@@ -52,7 +52,7 @@ propagate :: proc(id: int, interest: Interest, value: $T) {
 }
 
 @(private = "file")
-propagate_scroll :: proc(id: int, wheel: f32) {
+propagate_scroll :: proc(id: int, wheel: f64) {
 	curr := id
 	for curr != -1 {
 		scope := &ctx.buffer[curr]
@@ -68,9 +68,9 @@ propagate_scroll :: proc(id: int, wheel: f32) {
 }
 
 @(private = "file")
-set_scroll :: proc(id: int, interest: Interest, dir: Dir, wheel: f32) -> bool {
+set_scroll :: proc(id: int, interest: Interest, dir: Dir, wheel: f64) -> bool {
 	scope := &ctx.buffer[id]
-	current := get(id, interest, f32) - wheel
+	current := get(id, interest, f64) - wheel
 	max_scroll := max(0, scope.content_size[dir] - scope.size[dir])
 	value := math.clamp(current, 0, max_scroll)
 
@@ -80,7 +80,7 @@ set_scroll :: proc(id: int, interest: Interest, dir: Dir, wheel: f32) -> bool {
 
 @(private = "file")
 is_mouse_inside :: #force_inline proc(scope: ^Scope, pos: Vec2) -> bool {
-	rect := [4]f32{f32(scope.clip[0]), f32(scope.clip[1]), f32(scope.clip[2]), f32(scope.clip[3])}
+	rect := [4]f64{f64(scope.clip[0]), f64(scope.clip[1]), f64(scope.clip[2]), f64(scope.clip[3])}
 	return(
 		pos.x >= rect[0] &&
 		pos.x <= rect[0] + rect[2] &&

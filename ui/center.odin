@@ -18,8 +18,8 @@ begin_center :: proc(uid: Id, content_size := Vec2{AUTO, AUTO}) -> Center {
 
 	begin_scope(size)
 
-	offset_x := max(f32(0), (size.x - state.last_size.x) * 0.5)
-	offset_y := max(f32(0), (size.y - state.last_size.y) * 0.5)
+	offset_x := max(f64(0), (size.x - state.last_size.x) * 0.5)
+	offset_y := max(f64(0), (size.y - state.last_size.y) * 0.5)
 
 	parent := get_scope()
 	parent.cursor += {offset_x, offset_y}

@@ -4,13 +4,13 @@ Stack :: struct {
 	inner_flags: Scope_Flags,
 	dir:         Dir,
 	fit:         Fit,
-	gap:         f32,
+	gap:         f64,
 }
 
 begin_stack :: proc(
 	uid: Id,
 	dir: Dir,
-	gap: f32 = 0,
+	gap: f64 = 0,
 	flags: Scope_Flags = {},
 	inner_flags: Scope_Flags = {},
 ) -> Stack {
@@ -40,7 +40,7 @@ stack_next :: proc(stack: ^Stack, size: Vec2) -> bool {
 stack :: proc(
 	uid: Id,
 	dir: Dir,
-	gap: f32 = 0,
+	gap: f64 = 0,
 	flags: Scope_Flags = {},
 	inner_flags: Scope_Flags = {},
 ) -> Stack {

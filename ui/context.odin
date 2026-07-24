@@ -99,18 +99,18 @@ deferred :: #force_inline proc(kind: Deferred_Kind, ud: rawptr, fn: proc(ud: raw
 	queue.enqueue(kind == .Pre ? &ctx.deferred_pre : &ctx.deferred_post, Deferred{ud, fn})
 }
 
-Deferred_Arg :: struct($T: typeid) {
+Closure :: struct($T: typeid) {
 	arg: T,
 	fn:  proc(arg: T),
 }
 
 deferred_with_poly :: proc(kind: Deferred_Kind, arg: $T, fn: proc(arg: T)) {
-	tmp := temp(Deferred_Arg(T))
+	tmp := temp(Closure(T))
 	tmp.arg = arg
 	tmp.fn = fn
 
 	fn := proc(ud: rawptr) {
-		tmp := (^Deferred_Arg(T))(ud)
+		tmp := (^Closure(T))(ud)
 		tmp.fn(tmp.arg)
 	}
 

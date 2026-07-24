@@ -6,7 +6,7 @@ import "core:unicode/utf8"
 Cached_Token :: struct {
 	start, end: int,
 	size:       Vec2,
-	step:       f32,
+	step:       f64,
 }
 
 Text_Wrap :: enum {
@@ -24,10 +24,10 @@ Text_Sroll :: enum {
 
 Text_Options :: struct {
 	wrap:           Text_Wrap,
-	letter_spacing: f32,
-	line_spacing:   f32,
+	letter_spacing: f64,
+	line_spacing:   f64,
 	font:           Font,
-	font_size:      f32,
+	font_size:      f64,
 	font_color:     Color,
 	scroll:         Text_Sroll,
 }
@@ -64,11 +64,11 @@ text :: proc(uid: Id, size: Vec2, text: string, opts: Text_Options, flags: Scope
 	container_size := get_size()
 
 	if opts.scroll == .X || opts.scroll == .Both {
-		bind(.Scroll_X, get(id(uid, 'x'), f32))
+		bind(.Scroll_X, get(id(uid, 'x'), f64))
 	}
 
 	if opts.scroll == .Y || opts.scroll == .Both {
-		bind(.Scroll_Y, get(id(uid, 'y'), f32))
+		bind(.Scroll_Y, get(id(uid, 'y'), f64))
 	}
 
 	text_id := get_text_id(uid, text, &opts)
@@ -81,7 +81,7 @@ text :: proc(uid: Id, size: Vec2, text: string, opts: Text_Options, flags: Scope
 	}
 
 	available := container_size.x
-	max_width: f32 = 0
+	max_width: f64 = 0
 
 	tokens := get_token_cache(id(text_id, "cache"), text, &opts)
 	for i in 0 ..< len(tokens) {
@@ -98,11 +98,11 @@ text :: proc(uid: Id, size: Vec2, text: string, opts: Text_Options, flags: Scope
 @(private = "file")
 draw :: proc(
 	container: ^Scope,
-	available: ^f32,
-	max_width: ^f32,
+	available: ^f64,
+	max_width: ^f64,
 	text: string,
 	text_size: Vec2,
-	step: f32,
+	step: f64,
 	opts: ^Text_Options,
 ) {
 	if container.cursor.x > 0 && available^ - text_size.x < 0 {
@@ -230,7 +230,7 @@ measure_text :: proc(
 	container_size: Vec2,
 	text: string,
 	opts: ^Text_Options,
-	padding: [4]f32 = {0, 0, 0, 0},
+	padding: [4]f64 = {0, 0, 0, 0},
 ) -> Vec2 {
 	text_id := get_text_id(uid, text, opts)
 	text_size := get_text_size(text_id, text, opts)
@@ -243,7 +243,7 @@ measure_text :: proc(
 	layout_size, just_created := get(layout_size_id, Vec2)
 	if just_created {
 		available := container_size.x
-		max_width: f32 = 0
+		max_width: f64 = 0
 		cursor: Vec2 = {}
 
 		tokens := get_token_cache(id(text_id, "cache"), text, opts)

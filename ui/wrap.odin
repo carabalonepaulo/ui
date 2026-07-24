@@ -4,17 +4,17 @@ Wrap :: struct {
 	container_scope: int,
 	content_scope:   int,
 	cursor:          Vec2,
-	line_height:     f32,
+	line_height:     f64,
 	usable_size:     Vec2,
 	gap:             Vec2,
-	padding:         [4]f32,
+	padding:         [4]f64,
 }
 
 begin_wrap :: proc(
 	uid: Id,
 	size: Vec2,
 	gap: Vec2 = {0, 0},
-	padding: [4]f32 = {0, 0, 0, 0},
+	padding: [4]f64 = {0, 0, 0, 0},
 ) -> Wrap {
 	begin_scope(size)
 
@@ -86,7 +86,7 @@ end_wrap :: proc(wrap: Wrap) {
 }
 
 @(deferred_out = end_wrap)
-wrap :: proc(uid: Id, size: Vec2, gap: Vec2 = {0, 0}, padding: [4]f32 = {0, 0, 0, 0}) -> Wrap {
+wrap :: proc(uid: Id, size: Vec2, gap: Vec2 = {0, 0}, padding: [4]f64 = {0, 0, 0, 0}) -> Wrap {
 	return begin_wrap(uid, size, gap, padding)
 }
 

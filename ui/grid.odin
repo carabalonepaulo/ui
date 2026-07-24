@@ -8,17 +8,19 @@ grid :: proc(
 	gap: Vec2,
 	ud: rawptr,
 	item: proc(i: int, ud: rawptr),
+	flags: Scope_Flags = {},
+	item_flags: Scope_Flags = {},
 ) {
-	scope(container_size, {.Clip})
+	scope(container_size, flags)
 	container := get_scope()
 
-	offset := get(id(uid, "offset"), f32)
+	offset := get(id(uid, "offset"), f64)
 	bind(.Scroll_Y, offset)
 
 	aspect_ratio := item_base_size.x / item_base_size.y
 	columns := max(int((container_size.x + gap.x) / (item_base_size.x + gap.x)), 1)
 
-	cell_width := (container_size.x - f32(columns - 1) * gap.x) / f32(columns)
+	cell_width := (container_size.x - f64(columns - 1) * gap.x) / f64(columns)
 	cell_height := cell_width / aspect_ratio
 	cell_size := Vec2{cell_width, cell_height}
 
@@ -28,7 +30,7 @@ grid :: proc(
 	skip_rows := max(int(offset^ / pitch_y), 0)
 	visible_rows := int(container_size.y / pitch_y) + 2
 
-	container.cursor += {0, f32(skip_rows) * pitch_y}
+	container.cursor += {0, f64(skip_rows) * pitch_y}
 
 	start_row := skip_rows
 	end_row := min(skip_rows + visible_rows, rows_count)
@@ -38,16 +40,16 @@ grid :: proc(
 			item_idx := r * columns + c
 			if item_idx >= items_count do break
 
-			container.cursor.x = f32(c) * (cell_width + gap.x)
+			container.cursor.x = f64(c) * (cell_width + gap.x)
 
-			scope(cell_size)
+			scope(cell_size, item_flags)
 			item(item_idx, ud)
 		}
 
 		container.cursor = {0, container.cursor.y + pitch_y}
 	}
 
-	container.content_size = {0, max(f32(rows_count) * pitch_y - gap.y, 0)}
+	container.content_size = {0, max(f64(rows_count) * pitch_y - gap.y, 0)}
 }
 
 Grid_State :: struct($T: typeid) {
@@ -63,13 +65,15 @@ grid_with_poly :: proc(
 	gap: Vec2,
 	ud: $T,
 	item: proc(i: int, ud: T),
+	flags: Scope_Flags = {},
+	item_flags: Scope_Flags = {},
 ) {
 	ptr := temp(Grid_State(T))
 	ptr^ = Grid_State(T){ud, item}
 
 	grid(uid, container_size, items_count, item_base_size, gap, ptr, proc(i: int, ud: rawptr) {
-		st := (^Grid_State(T))(ud)
-		st.fn(i, st.ud)
-	})
+			st := (^Grid_State(T))(ud)
+			st.fn(i, st.ud)
+		}, flags, item_flags)
 }
 

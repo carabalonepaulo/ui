@@ -7,22 +7,22 @@ Layout_Kind :: enum {
 
 Layout_Item :: struct {
 	kind:  Layout_Kind,
-	value: f32,
+	value: f64,
 }
 
 Flex :: struct {
 	inner_flags:   Scope_Flags,
 	dir:           Dir,
 	current_child: int,
-	computed:      []f32,
-	gap:           f32,
+	computed:      []f64,
+	gap:           f64,
 }
 
 begin_flex :: proc(
 	size: Vec2,
 	dir: Dir,
 	items: []Layout_Item,
-	gap: f32 = 0,
+	gap: f64 = 0,
 	flags: Scope_Flags = {},
 	inner_flags: Scope_Flags = {},
 ) -> Flex {
@@ -35,15 +35,15 @@ begin_flex :: proc(
 		inner_flags   = inner_flags,
 		dir           = dir,
 		current_child = 0,
-		computed      = make([]f32, len(items), ctx.arena_allocator),
+		computed      = make([]f64, len(items), ctx.arena_allocator),
 		gap           = gap,
 	}
 
-	total_gaps := f32(max(0, len(items) - 1)) * gap
+	total_gaps := f64(max(0, len(items) - 1)) * gap
 	usable_for_items := size[dir] - total_gaps
 
-	total_absolute: f32 = 0
-	total_flex: f32 = 0
+	total_absolute: f64 = 0
+	total_flex: f64 = 0
 
 	for item in items {
 		if item.kind == .Absolute do total_absolute += item.value
@@ -100,7 +100,7 @@ flex :: proc(
 	size: Vec2,
 	dir: Dir,
 	items: []Layout_Item,
-	gap: f32 = 0,
+	gap: f64 = 0,
 	flags: Scope_Flags = {},
 	inner_flags: Scope_Flags = {},
 ) -> Flex {

@@ -57,14 +57,14 @@ end_scope :: proc() {
 	child := &ctx.buffer[ctx.current_scope]
 
 	if .Scroll_X in child.interests {
-		if ptr := (^f32)(ctx.interest_buffer[ctx.current_scope][.Scroll_X]); ptr != nil {
+		if ptr := (^f64)(ctx.interest_buffer[ctx.current_scope][.Scroll_X]); ptr != nil {
 			ptr^ = math.clamp(ptr^, 0, max(0, child.content_size.x - child.size.x))
 			child.offset.x = ptr^
 		}
 	}
 
 	if .Scroll_Y in child.interests {
-		if ptr := (^f32)(ctx.interest_buffer[ctx.current_scope][.Scroll_Y]); ptr != nil {
+		if ptr := (^f64)(ctx.interest_buffer[ctx.current_scope][.Scroll_Y]); ptr != nil {
 			ptr^ = math.clamp(ptr^, 0, max(0, child.content_size.y - child.size.y))
 			child.offset.y = ptr^
 		}
@@ -123,7 +123,7 @@ scope_at :: proc(pos: Vec2, size: Vec2, flags: Scope_Flags = {}) {
 bind :: proc(interest: Interest, ptr: rawptr) {
 	assert(ctx.current_scope != -1, "invalid scope")
 
-	if ptr == nil do return
+	// if ptr == nil do return
 
 	scope := get_scope()
 	scope.interests += {interest}
@@ -131,9 +131,9 @@ bind :: proc(interest: Interest, ptr: rawptr) {
 
 	#partial switch interest {
 	case .Scroll_X:
-		scope.offset.x = (^f32)(ptr)^
+		scope.offset.x = (^f64)(ptr)^
 	case .Scroll_Y:
-		scope.offset.y = (^f32)(ptr)^
+		scope.offset.y = (^f64)(ptr)^
 	}
 }
 
@@ -170,14 +170,14 @@ get_available_size :: #force_inline proc(id := -1) -> Vec2 {
 	id := id == -1 ? ctx.current_scope : id
 	scope := &ctx.buffer[id]
 	return Vec2 {
-		max(f32(0), scope.size.x - scope.cursor.x),
-		max(f32(0), scope.size.y - scope.cursor.y),
+		max(f64(0), scope.size.x - scope.cursor.x),
+		max(f64(0), scope.size.y - scope.cursor.y),
 	}
 }
 
-get_visible_rect :: proc(id := -1) -> [4]f32 {
+get_visible_rect :: proc(id := -1) -> [4]f64 {
 	child := get_scope(id)
-	if child.parent == -1 do return [4]f32{0, 0, child.size.x, child.size.y}
+	if child.parent == -1 do return [4]f64{0, 0, child.size.x, child.size.y}
 
 	parent := get_parent_scope(id)
 
@@ -186,7 +186,7 @@ get_visible_rect :: proc(id := -1) -> [4]f32 {
 	right := min(child.pos.x + child.size.x, parent.offset.x + parent.size.x)
 	bottom := min(child.pos.y + child.size.y, parent.offset.y + parent.size.y)
 
-	return [4]f32 {
+	return [4]f64 {
 		left - parent.offset.x,
 		top - parent.offset.y,
 		max(0, right - left),
@@ -241,7 +241,7 @@ get_anchor :: proc(anchor: Anchor, id := -1) -> (Vec2, bool) #optional_ok {
 
 to_screen_pos_at :: #force_inline proc(id: int, local: Vec2) -> Vec2 {
 	scope := get_scope(id)
-	return scope.screen_pos + local - scope.offset
+	return scope.screen_pos + (local - scope.offset)
 }
 
 to_local_pos_at :: #force_inline proc(id: int, screen: Vec2) -> Vec2 {
@@ -267,7 +267,7 @@ is_scroll_at_end :: #force_inline proc(axis: Dir, id := -1) -> bool {
 	return scope.offset[axis] >= max_offset
 }
 
-measure_padding :: proc(padding: [4]f32, dir: Dir) -> (val: f32) {
+measure_padding :: proc(padding: [4]f64, dir: Dir) -> (val: f64) {
 	switch dir {
 	case .X:
 		val = padding[1] + padding[3]
@@ -277,23 +277,23 @@ measure_padding :: proc(padding: [4]f32, dir: Dir) -> (val: f32) {
 	return
 }
 
-measure_fixed :: proc(size: f32, count: int, gap: f32 = 0, padding: [2]f32 = {0, 0}) -> f32 {
+measure_fixed :: proc(size: f64, count: int, gap: f64 = 0, padding: [2]f64 = {0, 0}) -> f64 {
 	if count <= 0 do return 0
-	count := f32(count)
+	count := f64(count)
 	return (size * count + gap * (count - 1)) + padding[0] + padding[1]
 }
 
 measure_dynamic :: proc(
 	items: []$T,
-	fn: proc(item: T) -> f32,
-	gap: f32 = 0,
-	padding: [2]f32 = {0, 0},
-) -> f32 {
+	fn: proc(item: T) -> f64,
+	gap: f64 = 0,
+	padding: [2]f64 = {0, 0},
+) -> f64 {
 	if len(items) == 0 do return 0
 
-	size: f32 = 0
+	size: f64 = 0
 	for item in items do size += fn(item)
 
-	return (size + gap * f32(len(items) - 1)) + padding[0] + padding[1]
+	return (size + gap * f64(len(items) - 1)) + padding[0] + padding[1]
 }
 

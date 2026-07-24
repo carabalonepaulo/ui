@@ -12,7 +12,7 @@ Texture :: distinct u64
 
 Font :: distinct u64
 
-Vec2 :: [2]f32
+Vec2 :: [2]f64
 
 Rect :: [4]i32
 
@@ -37,7 +37,7 @@ Callbacks :: struct {
 	is_key_released:   proc(key: Keyboard_Key) -> bool,
 	is_key_up:         proc(key: Keyboard_Key) -> bool,
 	//
-	measure_text:      proc(font: Font, text: string, font_size: f32, spacing: f32) -> Vec2,
+	measure_text:      proc(font: Font, text: string, font_size: f64, spacing: f64) -> Vec2,
 	//
 	draw_text:         proc(font: Font, text: string, x, y, size, spacing: f32, color: Color),
 	draw_rect:         proc(x, y, w, h: f32, color: Color),
@@ -91,16 +91,16 @@ Scope_Flag :: enum {
 Scope_Flags :: bit_set[Scope_Flag]
 
 Scope :: struct {
-	parent:       int,
 	screen_pos:   Vec2,
-	pos:          Vec2,
 	size:         Vec2,
 	content_size: Vec2,
 	offset:       Vec2,
 	cursor:       Vec2,
+	pos:          Vec2,
 	clip:         Rect,
 	flags:        Scope_Flags,
 	interests:    Interests,
+	parent:       int,
 }
 
 Context :: struct {

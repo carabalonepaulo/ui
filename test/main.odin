@@ -19,31 +19,32 @@ CALLBACKS :: ui.Callbacks {
 	get_default_font = proc() -> ui.Font {
 		return 0
 	},
-	measure_text = proc(font: ui.Font, text: string, font_size: f32, spacing: f32) -> ui.Vec2 {
+	measure_text = proc(font: ui.Font, text: string, font_size: f64, spacing: f64) -> ui.Vec2 {
 		default := rl.GetFontDefault()
 		text_cstr := strings.clone_to_cstring(text, ui.get_temp_allocator())
-		return transmute(ui.Vec2)(rl.MeasureTextEx(default, text_cstr, font_size, spacing))
+		size := rl.MeasureTextEx(default, text_cstr, f32(font_size), f32(spacing))
+		return ui.Vec2{f64(size.x), f64(size.y)}
 	},
 	//
 	get_mouse_pos = proc() -> ui.Vec2 {
-		return transmute(ui.Vec2)(rl.GetMousePosition())
+		pos := rl.GetMousePosition()
+		return ui.Vec2{f64(pos.x), f64(pos.y)}
 	},
 	get_mouse_wheel = proc() -> ui.Vec2 {
 		@(static) current_offset: f32 = 0.0
 		@(static) target_offset: f32 = 0.0
 		@(static) velocity: f32 = 0.0
-		@(static) last_time: f64 = 0.0
-		@(static) last_id: int = -1
+		@(static) last_time: f32 = 0.0
 
-		now := rl.GetTime()
-		dt := f32(now - last_time) if last_time > 0.0 else f32(rl.GetFrameTime())
+		now := f32(rl.GetTime())
+		dt := now - last_time if last_time > 0.0 else rl.GetFrameTime()
 		last_time = now
 
 		if dt <= 0.0 || dt > 0.1 do dt = 1.0 / 60.0
 
 		wheel_raw := rl.GetMouseWheelMoveV().y
 
-		scroll_impulse_scale := 20.0 + scroll_modifier
+		scroll_impulse_scale: f32 = 20.0 + scroll_modifier
 
 		if wheel_raw != 0.0 {
 			target_offset += wheel_raw * scroll_impulse_scale
@@ -72,7 +73,7 @@ CALLBACKS :: ui.Callbacks {
 			velocity = 0.0
 		}
 
-		return ui.Vec2{0, frame_delta}
+		return ui.Vec2{0, f64(frame_delta)}
 	},
 	//
 	is_mouse_pressed = proc(btn: ui.Mouse_Button) -> bool {
@@ -160,14 +161,14 @@ main :: proc() {
 
 		ui.frame()
 
-		w, h := f32(rl.GetScreenWidth()), f32(rl.GetScreenHeight())
+		w, h := f64(rl.GetScreenWidth()), f64(rl.GetScreenHeight())
 		ui.scope({w, h})
 
-		tabs([]Tab{{"Layout", layout_tab}, {"Text", text_tab}, {"Grid", grid_tab}})
+		tabs({{"Layout", layout_tab}, {"Grid", grid_tab}, {"Text", text_tab}})
 
 		debug := ui.get(ui.id("debug"), bool, false)
 		if rl.IsKeyPressed(.D) do debug^ = !(debug^)
-		if debug^ do ui.popup({}, {f32(w), f32(h)}, ui.profiler)
+		if debug^ do ui.popup({}, {f64(w), f64(h)}, ui.profiler)
 	}
 }
 
@@ -183,7 +184,7 @@ tabs :: proc(tabs: []Tab) {
 	}
 
 	LABEL_SIZE :: ui.Vec2{ui.AUTO, ui.AUTO}
-	PADDING :: [4]f32{10, 20, 10, 20}
+	PADDING :: [4]f64{10, 20, 10, 20}
 	BG_COLOR :: ui.Color{31, 31, 31, 255}
 	BG_HOVER_COLOR :: ui.Color{41, 41, 41, 255}
 	CONTENT_BG_COLOR :: ui.Color{21, 21, 21, 255}
@@ -237,11 +238,11 @@ tabs :: proc(tabs: []Tab) {
 
 layout_tab :: proc() {
 	size := ui.get_available_size()
-	r := ui.flex(size, .X, {{.Flex, 1}, {.Flex, 1}}, 32)
+	r := ui.flex(size, .X, {{.Flex, 1}, {.Flex, 1}}, 64)
 
 	if ui.next(&r) {
 		size := ui.get_available_size()
-		c := ui.flex(size, .Y, {{.Flex, 1}, {.Flex, 1}, {.Flex, 1}}, 32)
+		c := ui.flex(size, .Y, {{.Flex, 1}, {.Flex, 1}, {.Flex, 1}}, 64)
 		if ui.next(&c) {
 			r := ui.flex(ui.get_available_size(), .X, {{.Flex, 1}, {.Flex, 1}})
 			if ui.next(&r) do simple()
@@ -313,6 +314,7 @@ grid_tab :: proc() {
 				{255, 255, 255, 255},
 			)
 		},
+		{.Clip},
 	)
 }
 
@@ -371,7 +373,7 @@ stack :: proc() {
 
 	stack := ui.stack(ui.id("root/stack"), .X, 10, {.Clip})
 	for i in 1 ..= 3 {
-		if ui.next(&stack, {40, f32(i) * 40 / 2}) {
+		if ui.next(&stack, {40, f64(i) * 40 / 2}) {
 			size := ui.get_available_size()
 			ui.draw_rect({}, size, {0, 255, 0, 255})
 		}
@@ -407,7 +409,7 @@ wrap :: proc() {
 
 	w := ui.wrap(ui.id("main/wrap"), size, gap = {8, 8}, padding = {12, 12, 12, 12})
 
-	scroll_y := ui.get(ui.id("main/wrap/scroll_y"), f32, 0.0)
+	scroll_y := ui.get(ui.id("main/wrap/scroll_y"), f64, 0.0)
 	ui.bind(.Scroll_Y, scroll_y)
 
 	item_sizes := []ui.Vec2 {
@@ -455,7 +457,7 @@ center :: proc() {
 		ui.fill_rect(bg_color)
 	}
 
-	ui.scope({32, 32})
+	ui.scope({64, 64})
 	ui.fill_rect({200, 0, 20, 255})
 }
 
@@ -463,7 +465,7 @@ huge_list :: proc() {
 	size := ui.get_available_size()
 	ui.draw_rect({}, size, {40, 40, 40, 255})
 
-	COUNT :: 100_000
+	COUNT :: 1_000_000
 
 	states, states_just_created := ui.get(
 		ui.id("huge_list/states"),
@@ -475,7 +477,7 @@ huge_list :: proc() {
 	ui.padding(top = 10, bottom = 10, left = 10, right = 10)
 
 	ui.scope(ui.get_available_size(), {.Clip})
-	offset := ui.get(ui.id("huge_list/offset"), f32)
+	offset := ui.get(ui.id("huge_list/offset"), f64)
 	ui.bind(.Scroll_Y, offset)
 
 	s := ui.stack(ui.id("huge_list/stack"), .Y, 10)
