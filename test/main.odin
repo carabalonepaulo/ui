@@ -298,10 +298,11 @@ grid_tab :: proc() {
 	GAP :: 20
 
 	@(static) hover: [COUNT]bool
+	@(static) offset: f64
 
 	ui.padding({GAP, GAP, GAP, GAP})
 	ui.grid_with_poly(
-		ui.id("tabs/grid"),
+		&offset,
 		ui.get_available_size(),
 		COUNT,
 		{180, 240},
@@ -515,6 +516,7 @@ huge_list :: proc() {
 }
 
 list :: proc() {
+	@(static) offset: f64
 	count := 100_000
 
 	State :: struct {
@@ -536,7 +538,7 @@ list :: proc() {
 	ui.fill_rect({40, 40, 40, 255})
 	ui.padding({10, 10, 10, 10})
 
-	ui.list_with_poly(ui.id("list"), ui.get_available_size(), count, 20, 10, items, proc(i: int, items: ^[]State) {
+	ui.list_with_poly(&offset, ui.get_available_size(), count, 20, 10, items, proc(i: int, items: ^[]State) {
 		ui.bind(.Hovered, &items[i].is_hover)
 
 		if items[i].is_hover do scroll_modifier = 5

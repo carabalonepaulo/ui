@@ -1,7 +1,7 @@
 package ui
 
 list :: proc(
-	uid: Id,
+	offset: ^f64,
 	size: Vec2,
 	items_count: int,
 	item_height: f64,
@@ -11,7 +11,6 @@ list :: proc(
 ) {
 	scope(size, {.Clip})
 
-	offset := get(id(uid, "offset"), f64)
 	container := get_scope()
 	bind(.Scroll_Y, offset)
 
@@ -35,7 +34,7 @@ List_State :: struct($T: typeid) {
 }
 
 list_with_poly :: proc(
-	uid: Id,
+	offset: ^f64,
 	size: Vec2,
 	items_count: int,
 	item_height: f64,
@@ -46,9 +45,11 @@ list_with_poly :: proc(
 	ptr := temp(List_State(T))
 	ptr^ = List_State(T){ud, item}
 
-	list(uid, size, items_count, item_height, gap, ptr, proc(i: int, ud: rawptr) {
+	fn :: proc(i: int, ud: rawptr) {
 		ud := (^List_State(T))(ud)
 		ud.fn(i, ud.ud)
-	})
+	}
+
+	list(offset, size, items_count, item_height, gap, ptr, fn)
 }
 

@@ -1,7 +1,7 @@
 package ui
 
 grid :: proc(
-	uid: Id,
+	offset: ^f64,
 	container_size: Vec2,
 	items_count: int,
 	item_base_size: Vec2,
@@ -14,7 +14,6 @@ grid :: proc(
 	scope(container_size, flags)
 	container := get_scope()
 
-	offset := get(id(uid, "offset"), f64)
 	bind(.Scroll_Y, offset)
 
 	aspect_ratio := item_base_size.x / item_base_size.y
@@ -58,7 +57,7 @@ Grid_State :: struct($T: typeid) {
 }
 
 grid_with_poly :: proc(
-	uid: Id,
+	offset: ^f64,
 	container_size: Vec2,
 	items_count: int,
 	item_base_size: Vec2,
@@ -71,9 +70,11 @@ grid_with_poly :: proc(
 	ptr := temp(Grid_State(T))
 	ptr^ = Grid_State(T){ud, item}
 
-	grid(uid, container_size, items_count, item_base_size, gap, ptr, proc(i: int, ud: rawptr) {
-			st := (^Grid_State(T))(ud)
-			st.fn(i, st.ud)
-		}, flags, item_flags)
+	fn :: proc(i: int, ud: rawptr) {
+		st := (^Grid_State(T))(ud)
+		st.fn(i, st.ud)
+	}
+
+	grid(offset, container_size, items_count, item_base_size, gap, ptr, fn, flags, item_flags)
 }
 
