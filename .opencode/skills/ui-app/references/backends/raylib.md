@@ -202,11 +202,11 @@ Without `just`:
 
 ```sh
 git submodule update --init --recursive
-odin run src -collection:ui=ui
+odin run src -collection:ui=ui/ui
 ```
 
 Headless check:
 
 ```sh
-odin run src -collection:ui=ui -- --screenshot out.png --view 2 --scale 1.5 --ssaa 3
+odin run src -collection:ui=ui/ui -- --screenshot out.png --view 2 --scale 1.5 --ssaa 3
 ```

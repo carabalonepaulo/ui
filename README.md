@@ -31,7 +31,7 @@ my-app/
 │   ├── ui/              # library package
 │   └── test/
 ├── src/
-│   └── main.odin        # import ui "ui:ui"
+│   └── main.odin        # import ui "ui:."
 ├── assets/
 └── ols.json
 ```
@@ -47,12 +47,12 @@ For a quick experiment, a plain clone works the same:
 git clone https://github.com/carabalonepaulo/ui.git ui
 ```
 
-`ols.json`:
+The collection root is the package folder, not the repository root. `ols.json`:
 
 ```json
 {
   "collections": [
-    { "name": "ui", "path": "ui" }
+    { "name": "ui", "path": "ui/ui" }
   ]
 }
 ```
@@ -60,21 +60,20 @@ git clone https://github.com/carabalonepaulo/ui.git ui
 Build/run:
 
 ```sh
-odin run src -collection:ui=ui
-odin build src -collection:ui=ui -out:app.exe
+odin run src -collection:ui=ui/ui
+odin build src -collection:ui=ui/ui -out:app.exe
 ```
 
 ### Local checkout
 
-Point the collection at any local clone; the collection root must be the root of
-this repository (the one containing the `ui/` package):
+Point the collection at the package folder of any local clone:
 
 ```json
-{ "name": "ui", "path": "../odin/ui" }
+{ "name": "ui", "path": "../odin/ui/ui" }
 ```
 
 ```sh
-odin run src -collection:ui=../odin/ui
+odin run src -collection:ui=../odin/ui/ui
 ```
 
 ### Starter template

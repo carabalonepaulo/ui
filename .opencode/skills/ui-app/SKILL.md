@@ -17,7 +17,7 @@ implementation, not a requirement.
 
 | Path | Purpose |
 | --- | --- |
-| `ui/` | The library package. Import as `ui:ui` through a collection. |
+| `ui/` | The library package. Import as `ui:.` through a collection. |
 | `test/` | Scratch test app shipped with the library. |
 | `.opencode/skills/ui-app` | This skill. |
 | `ui-demo/src/main.odin` | Starter: backend callbacks and frame loop. |
@@ -41,7 +41,8 @@ Reference files:
 ## Set up a new app (outside this repo)
 
 The recommended layout links the library as a git submodule at `ui/`. The
-collection root is the repository root, so the package path is `ui:ui`:
+collection root is the **package folder** `ui/ui`, not the repository root, so
+the import is `ui:.`:
 
 ```text
 my-app/
@@ -50,7 +51,7 @@ my-app/
 │   ├── test/
 │   └── .opencode/skills/ui-app/
 ├── src/
-│   └── main.odin        # import ui "ui:ui"
+│   └── main.odin        # import ui "ui:."
 ├── assets/
 ├── ols.json
 └── opencode.json
@@ -74,7 +75,7 @@ git clone https://github.com/carabalonepaulo/ui.git ui
 ```json
 {
   "collections": [
-    { "name": "ui", "path": "ui" }
+    { "name": "ui", "path": "ui/ui" }
   ]
 }
 ```
@@ -82,18 +83,18 @@ git clone https://github.com/carabalonepaulo/ui.git ui
 Build/run with the same collection:
 
 ```sh
-odin run src -collection:ui=ui
-odin build src -collection:ui=ui -out:app.exe
+odin run src -collection:ui=ui/ui
+odin build src -collection:ui=ui/ui -out:app.exe
 ```
 
-A local checkout works the same way; point the collection anywhere:
+A local checkout works the same way; point the collection at its package folder:
 
 ```json
-{ "name": "ui", "path": "../odin/ui" }
+{ "name": "ui", "path": "../odin/ui/ui" }
 ```
 
 ```sh
-odin run src -collection:ui=../odin/ui
+odin run src -collection:ui=../odin/ui/ui
 ```
 
 A submodule pins the exact library commit. Update it deliberately with
@@ -139,7 +140,7 @@ Without `just`:
 
 ```sh
 git submodule update --init --recursive
-odin run src -collection:ui=ui
+odin run src -collection:ui=ui/ui
 ```
 
 The starter's `src/` is the reference for every pattern in this skill.
