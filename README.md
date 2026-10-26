@@ -120,7 +120,8 @@ pitfalls. To use it from an application, point OpenCode at the cloned skill:
 }
 ```
 
-Or copy `ui/.opencode/skills/ui-app` into `.opencode/skills/`.
+Or copy `ui/.opencode/skills/ui-app` into `.opencode/skills/`. For a global
+install, copy it to `~/.config/opencode/skills/ui-app`.
 
 ## License
 

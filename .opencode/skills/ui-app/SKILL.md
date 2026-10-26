@@ -99,6 +99,7 @@ app's working directory:
 
 Alternatively, copy `ui/.opencode/skills/ui-app` into `.opencode/skills/` if you
 want the skill committed with the app and independent of the library clone path.
+For a global install, copy it to `~/.config/opencode/skills/ui-app`.
 
 ### Starter template
 
