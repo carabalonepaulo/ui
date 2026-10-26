@@ -1,7 +1,7 @@
 # Patterns
 
-These are the patterns used by `demo/`. They are deliberately small and
-copy-pasteable.
+These are the patterns used by the `ui-demo` starter (`src/`). They are
+deliberately small and copy-pasteable.
 
 ## App shell
 
@@ -45,8 +45,9 @@ block creates a sibling region and closes its scope before the next one starts.
 
 ## Pages and injected context
 
-The reference architecture lives in `demo/pages/` and `demo/app.odin`. It is not
-part of the library; copy or adapt it for applications.
+The reference architecture lives in `ui-demo/src/pages/` and
+`ui-demo/src/app.odin`. It is not part of the library; copy or adapt it for
+applications.
 
 ```odin
 // pages/pages.odin
@@ -376,7 +377,7 @@ contents and expect zero-latency layout.
 
 ```odin
 debug := ui.get(ui.id("app/debug"), bool)
-// Replace with your backend's key query; the raylib demo uses rl.IsKeyPressed.
+// Replace with your backend's key query; the starter uses rl.IsKeyPressed.
 if key_pressed(.D) do debug^ = !(debug^)
 if debug^ do ui.popup({0, 0}, root_size, ui.profiler)
 ```

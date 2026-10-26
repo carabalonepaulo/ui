@@ -1,5 +1,0 @@
-run:
-    @odin run .
-
-build:
-    @odin build . -out:demo.exe

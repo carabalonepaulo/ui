@@ -1,3 +1,5 @@
 {
-  "collections": []
+  "collections": [
+    { "name": "ui", "path": "." }
+  ]
 }

@@ -1,7 +1,8 @@
 # Raylib + fontstash backend
 
-This is the backend used by `demo/`. The library is backend-agnostic; this
-document is one complete implementation, not a requirement.
+This is the backend used by the `ui-demo` starter (`src/`). The library is
+backend-agnostic; this document is one complete implementation, not a
+requirement.
 
 Raylib version in the vendored Odin package: 6.0 (OpenGL 3.3). Fontstash is the
 Odin-native port in `vendor:fontstash`.
@@ -10,11 +11,11 @@ Odin-native port in `vendor:fontstash`.
 
 | File | Purpose |
 | --- | --- |
-| `demo/main.odin` | Window, `ui.Callbacks`, frame loop, wheel smoothing, CLI. |
-| `demo/scale.odin` | Render target, physical-pixel callbacks, mouse/scissor mapping. |
-| `demo/renderer.odin` | Fontstash atlas, font registry, glyph quads. |
-| `demo/app.odin` | Shell and page lifecycle (`go_to`, `load_font`). |
-| `demo/pages/` | Page framework and screens. |
+| `src/main.odin` | Window, `ui.Callbacks`, frame loop, wheel smoothing, CLI. |
+| `src/scale.odin` | Render target, physical-pixel callbacks, mouse/scissor mapping. |
+| `src/renderer.odin` | Fontstash atlas, font registry, glyph quads. |
+| `src/app.odin` | Shell and page lifecycle (`go_to`, `load_font`). |
+| `src/pages/` | Page framework and screens. |
 
 ## Callbacks
 
@@ -36,12 +37,12 @@ The other fields are reserved. `get_delta_time`, `get_default_font`,
 `load_texture`, `load_font`, `draw_texture`, `is_mouse_down/up`, and the key
 callbacks are currently not called by the library.
 
-All draw/measure coordinates from the UI are logical. The demo converts them to
-the render target's physical pixels using `ppu = ui_scale * render_scale`.
+All draw/measure coordinates from the UI are logical. The starter converts them
+to the render target's physical pixels using `ppu = ui_scale * render_scale`.
 
 ## Render target
 
-`demo/scale.odin`:
+`src/scale.odin`:
 
 ```text
 texture_size = ceil(dest_size * render_scale)
@@ -62,7 +63,7 @@ dest := rl.Rectangle{dest_pos.x, dest_pos.y, dest_size.x, dest_size.y}
 rl.DrawTexturePro(tex, source, dest, {0, 0}, 0, rl.WHITE)
 ```
 
-`GenTextureMipmaps` logs at INFO every call. The demo raises the trace level to
+`GenTextureMipmaps` logs at INFO every call. The starter raises the trace level to
 `.WARNING` after init. If the log is useful, lower it again or only generate
 mips when the content changes.
 
@@ -92,7 +93,7 @@ if inside(dest_rect, mouse) {
 ## Text with fontstash
 
 Fontstash keeps one single-channel atlas for all fonts and rasterizes glyphs at
-the requested size. Raylib's default shader expects RGBA, so the demo mirrors
+the requested size. Raylib's default shader expects RGBA, so the starter mirrors
 the dirty alpha region into white RGB + alpha and uploads that.
 
 Key points:
@@ -104,7 +105,7 @@ Key points:
 * Return `pixel_size` as the measured height so the library's line advance
   (`font_size + line_spacing`) stays consistent. Use line spacing for
   descenders.
-* Do not upload the atlas after drawing the quads; upload first. The demo
+* Do not upload the atlas after drawing the quads; upload first. The starter
   collects quads, flushes the atlas, then issues `DrawTexturePro` for each quad.
 * If fontstash grows the atlas while iterating, normalized UVs change. Retry the
   whole string; the glyphs are cached, so the retry is cheap.
@@ -112,13 +113,13 @@ Key points:
   temporary buffer with `width = rec.width`, not a slice of the full atlas.
 * Keep that staging buffer on the renderer using the normal allocator. A full
   atlas upload can exceed the UI frame arena (8 MB by default), especially at
-  high `render_scale`. This was a real crash in the demo at `scale 4, ssaa 4`.
+  high `render_scale`. This was a real crash in the starter at `scale 4, ssaa 4`.
 * Set the atlas filter to `.BILINEAR`. With pixel-snapped quads, `.POINT` also
   works; `.BILINEAR` avoids hard edges.
 * A per-size glyph cache means changing `ui_scale` or `render_scale` creates new
   glyph sizes. That is normal; watch atlas growth.
 
-The complete implementation is `demo/renderer.odin`.
+The complete implementation is `ui-demo/src/renderer.odin`.
 
 ### Font registry behind `Context.load_font`
 
@@ -182,16 +183,24 @@ destination space and be consistent. Setting `render_scale` to the DPI scale is
 a simple way to get a physical-resolution target while keeping screen-coordinate
 layout.
 
-## Run the demo
+## Run the starter
 
 ```sh
-cd demo && just run
-# or, from the repository root:
-odin run demo
+git clone https://github.com/carabalonepaulo/ui-demo.git my-app
+cd my-app
+just setup     # clones carabalonepaulo/ui into ./ui
+just run
+```
+
+Without `just`:
+
+```sh
+git clone https://github.com/carabalonepaulo/ui.git ui
+odin run src -collection:ui=ui
 ```
 
 Headless check:
 
 ```sh
-odin run demo -- --screenshot out.png --view 2 --scale 1.5 --ssaa 3
+odin run src -collection:ui=ui -- --screenshot out.png --view 2 --scale 1.5 --ssaa 3
 ```

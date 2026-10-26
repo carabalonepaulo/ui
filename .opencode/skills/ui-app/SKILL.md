@@ -1,30 +1,34 @@
 ---
 name: Odin UI
-description: Build apps, tools, and game overlays with the backend-agnostic immediate-mode UI library in this repository. Use for layout (scopes, flex, stack, wrap, grid, list), cached text, input interests, the hashed store, popups, multi-page app architecture, and backend integration/scaling (raylib + fontstash is the included example).
+description: Build apps, tools, and game overlays with the backend-agnostic odin/ui library (github.com/carabalonepaulo/ui), including the ui-demo starter. Use for project setup/imports, layout (scopes, flex, stack, wrap, grid, list), cached text, input interests, the hashed store, popups, multi-page app architecture, backend integration, and scaling (raylib + fontstash is the included example).
 ---
 
 # Odin UI
 
-This repository contains the library, not an application. The package named
-`ui` lives in `ui/` and depends only on Odin's `core`. It does not know about
-raylib, windows, fonts, or scaling; a backend supplies those through
-`ui.Callbacks`.
+This repository is the library. Applications live outside it and consume it
+through an Odin collection. The package named `ui` lives in `ui/` and depends
+only on Odin's `core`; it does not know about raylib, windows, fonts, or scaling.
+A backend supplies those through `ui.Callbacks`.
 
-`demo/` is a complete reference application using raylib + fontstash. It is one
-backend implementation, not a requirement. Use it as a working example and a
-page-architecture template. Paths such as `ui/` and `demo/` are relative to the
-repository root, not to this skill directory.
+The [`ui-demo`](https://github.com/carabalonepaulo/ui-demo) repository is the
+reference application and starter template: raylib + fontstash, the page
+architecture, the dashboard, typography, and scaling pages. It is one backend
+implementation, not a requirement.
 
 | Path | Purpose |
 | --- | --- |
-| `ui/` | The library (`import ui "../ui"` or a collection). |
-| `test/` | Original scratch test app. Useful for unusual APIs. |
-| `demo/main.odin` | Backend callbacks and the frame loop. |
-| `demo/app.odin` | App shell, page registry, lifecycle, injected `Context`. |
-| `demo/pages/` | Page framework and page implementations. |
-| `demo/kit/` | Demo-only colors, text helpers, buttons. |
-| `demo/scale.odin` | Render-to-texture + supersampled scaling. |
-| `demo/renderer.odin` | Fontstash atlas, font registry, text rendering. |
+| `ui/` | The library package. Import as `ui:ui` through a collection. |
+| `test/` | Scratch test app shipped with the library. |
+| `.opencode/skills/ui-app` | This skill. |
+| `ui-demo/src/main.odin` | Starter: backend callbacks and frame loop. |
+| `ui-demo/src/app.odin` | Starter: shell, page registry, lifecycle, context. |
+| `ui-demo/src/pages/` | Starter: page framework and page implementations. |
+| `ui-demo/src/kit/` | Starter: colors, text helpers, buttons. |
+| `ui-demo/src/scale.odin` | Starter: render-to-texture + supersampled scaling. |
+| `ui-demo/src/renderer.odin` | Starter: fontstash atlas, font registry, text. |
+
+Paths such as `ui/`, `test/`, and `src/` are relative to the app or clone root,
+not to this skill directory.
 
 Reference files:
 
@@ -34,7 +38,87 @@ Reference files:
 * `references/backends/raylib.md` - the included raylib + fontstash backend.
 * `references/pitfalls.md` - library-level traps and fixes.
 
+## Set up a new app (outside this repo)
+
+Clone the library inside the app. The collection root is the repository root, so
+the package path is `ui:ui`:
+
+```text
+my-app/
+├── ui/                  # git clone https://github.com/carabalonepaulo/ui.git ui
+│   ├── ui/              # the library package
+│   ├── test/
+│   └── .opencode/skills/ui-app/
+├── src/
+│   └── main.odin        # import ui "ui:ui"
+├── assets/
+├── ols.json
+└── opencode.json
+```
+
+`ols.json` (editor/OLS support):
+
+```json
+{
+  "collections": [
+    { "name": "ui", "path": "ui" }
+  ]
+}
+```
+
+Build/run with the same collection:
+
+```sh
+odin run src -collection:ui=ui
+odin build src -collection:ui=ui -out:app.exe
+```
+
+A local checkout works the same way; point the collection anywhere:
+
+```json
+{ "name": "ui", "path": "../odin/ui" }
+```
+
+```sh
+odin run src -collection:ui=../odin/ui
+```
+
+Enable this skill in the app with `opencode.json`. The path is relative to the
+app's working directory:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "skills": ["./ui/.opencode/skills"]
+}
+```
+
+Alternatively, copy `ui/.opencode/skills/ui-app` into `.opencode/skills/` if you
+want the skill committed with the app and independent of the library clone path.
+
+### Starter template
+
+The fastest path is the starter repository, which already has the collection,
+configs, pages, and backend:
+
+```sh
+git clone https://github.com/carabalonepaulo/ui-demo.git my-app
+cd my-app
+just setup      # clones carabalonepaulo/ui into ./ui
+just run
+```
+
+Without `just`:
+
+```sh
+git clone https://github.com/carabalonepaulo/ui.git ui
+odin run src -collection:ui=ui
+```
+
+The starter's `src/` is the reference for every pattern in this skill.
+
 ## Core model
+
 
 * **Immediate mode.** One function builds the whole frame. There is no retained
   widget tree and no style system.
@@ -73,7 +157,7 @@ for app_running() {
 ```
 
 Keep `ui.frame()` and the root `ui.scope()` in the same block: their deferred
-ends run in reverse order at the end of that block. The demo, for example,
+ends run in reverse order at the end of that block. The starter, for example,
 wraps them inside `BeginTextureMode`/`EndTextureMode`.
 
 The backend callbacks actually used today are: `get_mouse_pos`,
@@ -84,11 +168,11 @@ The backend callbacks actually used today are: `get_mouse_pos`,
 
 ## Pages and app context
 
-The code in `demo/pages/` is a **reference architecture**, not part of the
+The code in `ui-demo/src/pages/` is a **reference architecture**, not part of the
 library. It keeps the app core independent from individual screens:
 
 ```odin
-// demo/pages/pages.odin
+// ui-demo/src/pages/pages.odin
 Context :: struct {
     go_to:               proc(page: Page, ud: rawptr = nil),
     set_scroll_modifier: proc(modifier: f32),
@@ -137,7 +221,7 @@ include it in the key.
 To add a page: create one `State`, one `create() -> pages.Interface`, add the
 constructor to `PAGE_CTORS`, and add the enum value. The shell, sidebar, and
 navigation pick it up automatically. Add it to `PAGE_ORDER` only if you use the
-demo's `--view` screenshot argument.
+starter's `--view` screenshot argument.
 
 ## Golden rules
 
@@ -274,7 +358,7 @@ outlive the frame and must not contain dangling `any` temporaries.
 ## Debugging
 
 * `ui.ctx.diagnostics` exposes frame/input/deferred/evict timings.
-* Set a debug bool and call `ui.popup({}, root_size, ui.profiler)`; the demo
+* Set a debug bool and call `ui.popup({}, root_size, ui.profiler)`; the starter
   toggles it with `D`.
 * `ui.is_visible()` and `ui.get_scope().clip` explain why a widget is culled.
 * `ui.get_visible_rect()` / `ui.get_anchor()` help with tooltips.

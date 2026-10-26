@@ -323,14 +323,14 @@ format_bytes(bytes: u64) -> string
 
 Use `ui.popup({0, 0}, root_size, ui.profiler)`.
 
-## Demo page framework (not part of the library)
+## Starter page framework (ui-demo, not part of the library)
 
-`demo/pages/` contains a small application architecture. It is reference code,
-not a library API. The shell owns chrome and lifecycle; pages own their state and
-drawing.
+`ui-demo/src/pages/` contains a small application architecture. It is reference
+code, not a library API. The shell owns chrome and lifecycle; pages own their
+state and drawing.
 
 ```odin
-// demo/pages/pages.odin
+// ui-demo/src/pages/pages.odin
 Page :: enum { Dashboard, Typography, Scaling }
 
 Scale_Info :: struct {
@@ -371,9 +371,9 @@ Lifecycle:
 * `on_exit(self)` runs when leaving.
 * `destroy(self)` frees page-owned memory at shutdown.
 
-`demo/app.odin` owns the `PAGE_CTORS` registration array, current/next page,
-`find_page`, `change_page`, and the `Context` implementation. A page is added
-without touching the shell:
+`ui-demo/src/app.odin` owns the `PAGE_CTORS` registration array, current/next
+page, `find_page`, `change_page`, and the `Context` implementation. A page is
+added without touching the shell:
 
 ```odin
 PAGE_CTORS :: [?]proc() -> pages.Interface {

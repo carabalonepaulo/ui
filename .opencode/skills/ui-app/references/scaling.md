@@ -203,5 +203,5 @@ Measure before shipping. Options:
 9. Recreate the target on resize/scale changes.
 10. Call `ui.deinit()` and release backend resources.
 
-For a complete implementation, see `demo/scale.odin` and
+For a complete implementation, see `ui-demo/src/scale.odin` and
 `references/backends/raylib.md`.
