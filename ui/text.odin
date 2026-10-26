@@ -74,7 +74,7 @@ text :: proc(uid: Id, size: Vec2, text: string, opts: Text_Options, flags: Scope
 	text_id := get_text_id(uid, text, &opts)
 	text_size := get_text_size(text_id, text, &opts)
 
-	if (text_size.x < container_size.x && text_size.y < container_size.y) || opts.wrap == .None {
+	if (text_size.x <= container_size.x && text_size.y <= container_size.y) || opts.wrap == .None {
 		draw_text(opts.font, text, {}, opts.font_size, opts.letter_spacing, opts.font_color)
 		container.content_size = text_size
 		return
@@ -90,6 +90,9 @@ text :: proc(uid: Id, size: Vec2, text: string, opts: Text_Options, flags: Scope
 		step := tokens[i].step
 		draw(container, &available, &max_width, token, token_size, step, &opts)
 	}
+
+	// The last line never wraps, so make sure its width is considered too.
+	if container.cursor.x > max_width do max_width = container.cursor.x
 
 	final_width := size.x != AUTO ? clamp(max_width, 0, container.size.x) : max_width
 	container.content_size = {final_width, container.cursor.y + opts.font_size}
@@ -201,16 +204,15 @@ get_token_cache :: proc(uid: Id, text: string, opts: ^Text_Options) -> []Cached_
 
 				if rune == ' ' {
 					token.size = space_size
-					token.step = space_size.x + opts.letter_spacing
 				} else {
-					word_size := ctx.callbacks.measure_text(
+					token.size = ctx.callbacks.measure_text(
 						opts.font,
 						letter,
 						opts.font_size,
 						opts.letter_spacing,
 					)
-					token.step = token.size.x + opts.letter_spacing
 				}
+				token.step = token.size.x + opts.letter_spacing
 
 				append(&sizes, token)
 			}
@@ -235,7 +237,7 @@ measure_text :: proc(
 	text_id := get_text_id(uid, text, opts)
 	text_size := get_text_size(text_id, text, opts)
 
-	if (text_size.x < container_size.x && text_size.y < container_size.y) || opts.wrap == .None {
+	if (text_size.x <= container_size.x && text_size.y <= container_size.y) || opts.wrap == .None {
 		return {
 			text_size.x + padding.left + padding.right,
 			text_size.y + padding.top + padding.bottom,
@@ -251,7 +253,6 @@ measure_text :: proc(
 
 		tokens := get_token_cache(id(text_id, "cache"), text, opts)
 		for i in 0 ..< len(tokens) {
-			token := text[tokens[i].start:tokens[i].end]
 			token_size := tokens[i].size
 			step := tokens[i].step
 
@@ -265,6 +266,8 @@ measure_text :: proc(
 			cursor.x += step
 			available -= step
 		}
+
+		if cursor.x > max_width do max_width = cursor.x
 
 		final_width := container_size.x != AUTO ? clamp(max_width, 0, container_size.x) : max_width
 		layout_size^ = {final_width, cursor.y + opts.font_size}
