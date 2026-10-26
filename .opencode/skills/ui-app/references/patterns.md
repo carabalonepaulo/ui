@@ -27,7 +27,7 @@ app_draw :: proc(ud: rawptr) {
         ui.scope_at({SIDEBAR_W, HEADER_H},
                     {size.x - SIDEBAR_W, size.y - HEADER_H - FOOTER_H})
         ui.fill_rect(C_BG)
-        if page := app.find_page(app.current_page); page != nil {
+        if page := app_find_page(app.current_page); page != nil {
             page.on_update(page.self)
         }
     }
@@ -36,7 +36,7 @@ app_draw :: proc(ud: rawptr) {
         draw_footer()
     }
 
-    app.apply_pending_page()
+    app_apply_pending_page()
 }
 ```
 
@@ -161,11 +161,11 @@ row := ui.flex(
 
 if ui.next(&row) {
     draw_text_line(ui.id("title"), {}, ui.get_size(), "ODIN UI",
-                   make_text_opts(FONT_BOLD, 22, C_TEXT))
+                   make_text_opts(app.font_bold, 22, C_TEXT))
 }
 if ui.next(&row) {
     draw_text_line(ui.id("subtitle"), {}, ui.get_size(), "a subtitle",
-                   make_text_opts(FONT_REGULAR, 12, C_TEXT_DIM))
+                   make_text_opts(app.font_regular, 12, C_TEXT_DIM))
 }
 if ui.next(&row) {
     draw_badge(ui.get_size())
@@ -181,7 +181,8 @@ State lives in the store and is fetched by id every frame. `pressed` is one
 frame behind and true for one frame:
 
 ```odin
-draw_button :: proc(uid: ui.Id, pos, size: ui.Vec2, label: string) -> bool {
+draw_button :: proc(uid: ui.Id, pos, size: ui.Vec2, label: string,
+                    font: ui.Font) -> bool {
     hovered := ui.get(ui.id(uid, "hover"), bool)
     pressed := ui.get(ui.id(uid, "pressed"), bool)
 
@@ -195,7 +196,7 @@ draw_button :: proc(uid: ui.Id, pos, size: ui.Vec2, label: string) -> bool {
     ui.fill_rect(bg)
 
     draw_text_line(ui.id(uid, "label"), {}, size, label,
-                   make_text_opts(FONT_REGULAR, 13, C_TEXT), .Center)
+                   make_text_opts(font, 13, C_TEXT), .Center)
 
     return pressed^
 }
@@ -208,33 +209,30 @@ visual and its model do not disagree.
 ## Nav with active state
 
 ```odin
-view := app.view
-hover := ui.get(ui.id("nav/hover"), [3]bool)
-press := ui.get(ui.id("nav/press"), [3]bool)
+area := ui.get_available_size()
 
-for label, i in NAV_ITEMS {
+for iface, i in app.page_list {
     {
+        hover := ui.get(ui.id("nav/hover", iface.page), bool)
+        press := ui.get(ui.id("nav/press", iface.page), bool)
+
         ui.scope_at({0, 28 + f64(i) * 44}, {area.x, 36})
 
-        if view == i {
+        if app.current_page == iface.page {
             ui.fill_rect(C_NAV_ACTIVE)
             ui.draw_rect({0, 0}, {3, 36}, C_ACCENT)
-        } else if hover[i] {
+        } else if hover^ {
             ui.fill_rect(C_NAV_HOVER)
         }
 
-        ui.bind(.Hovered, &hover[i])
-        ui.bind(.Pressed, &press[i])
+        ui.bind(.Hovered, hover)
+        ui.bind(.Pressed, press)
 
-        draw_text_line(ui.id("nav", i), {16, 0}, {area.x - 16, 36}, label,
-                       make_text_opts(FONT_REGULAR, 14, C_TEXT))
-    }
-}
+        color := app.current_page == iface.page ? C_TEXT : C_TEXT_MUTED
+        draw_text_line(ui.id("nav", iface.page), {16, 0}, {area.x - 16, 36},
+                       iface.label, make_text_opts(app.font_regular, 14, color))
 
-for i in 0 ..< len(NAV_ITEMS) {
-    if press[i] {
-        view = i
-        break
+        if press^ do app_go_to(iface.page)
     }
 }
 ```
@@ -269,7 +267,7 @@ state (or a store entry) so it survives while another view is shown.
 
 ```odin
 opts := ui.Text_Options {
-    font         = FONT_REGULAR,
+    font         = app.font_regular,
     font_size    = 15,
     font_color   = C_TEXT_MUTED,
     wrap         = .Word,
@@ -299,7 +297,7 @@ ui.list_with_poly(
         if items[i].hover do ui.fill_rect(C_PANEL_HOVER)
         width := ui.get_size().x
         draw_text_line(ui.id("row", i), {12, 0}, {width - 24, 22},
-                       items[i].text, make_text_opts(FONT_REGULAR, 13, C_TEXT))
+                       items[i].text, make_text_opts(app.font_regular, 13, C_TEXT))
     },
 )
 ```
@@ -317,7 +315,7 @@ if hovered {
             ui.draw_rect({0, 0}, {220, 1}, C_BORDER)
             ui.padding({12, 12, 12, 12})
             draw_text_line(ui.id("tip/title"), {}, ui.get_available_size(),
-                           "Tooltip", make_text_opts(FONT_BOLD, 14, C_TEXT))
+                           "Tooltip", make_text_opts(app.font_bold, 14, C_TEXT))
         })
     }
 }

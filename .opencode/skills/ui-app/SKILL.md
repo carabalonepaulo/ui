@@ -136,7 +136,8 @@ include it in the key.
 
 To add a page: create one `State`, one `create() -> pages.Interface`, add the
 constructor to `PAGE_CTORS`, and add the enum value. The shell, sidebar, and
-navigation pick it up automatically.
+navigation pick it up automatically. Add it to `PAGE_ORDER` only if you use the
+demo's `--view` screenshot argument.
 
 ## Golden rules
 
