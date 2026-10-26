@@ -186,16 +186,22 @@ layout.
 ## Run the starter
 
 ```sh
-git clone https://github.com/carabalonepaulo/ui-demo.git my-app
+git clone --recurse-submodules https://github.com/carabalonepaulo/ui-demo.git my-app
 cd my-app
-just setup     # clones carabalonepaulo/ui into ./ui
+just run
+```
+
+If it was cloned without submodules:
+
+```sh
+git submodule update --init --recursive
 just run
 ```
 
 Without `just`:
 
 ```sh
-git clone https://github.com/carabalonepaulo/ui.git ui
+git submodule update --init --recursive
 odin run src -collection:ui=ui
 ```
 

@@ -76,11 +76,13 @@ The fastest way to get a working app (raylib + fontstash, page architecture,
 scaling, profiler):
 
 ```sh
-git clone https://github.com/carabalonepaulo/ui-demo.git my-app
+git clone --recurse-submodules https://github.com/carabalonepaulo/ui-demo.git my-app
 cd my-app
-just setup     # clones this repository into ./ui
 just run
 ```
+
+The starter links this repository as a git submodule at `ui/`; `just run`/`build`
+also initialize it with `git submodule update --init --recursive`.
 
 ## Minimal integration
 

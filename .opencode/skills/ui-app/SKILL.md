@@ -40,12 +40,12 @@ Reference files:
 
 ## Set up a new app (outside this repo)
 
-Clone the library inside the app. The collection root is the repository root, so
-the package path is `ui:ui`:
+The recommended layout links the library as a git submodule at `ui/`. The
+collection root is the repository root, so the package path is `ui:ui`:
 
 ```text
 my-app/
-├── ui/                  # git clone https://github.com/carabalonepaulo/ui.git ui
+├── ui/                  # git submodule -> carabalonepaulo/ui
 │   ├── ui/              # the library package
 │   ├── test/
 │   └── .opencode/skills/ui-app/
@@ -54,6 +54,19 @@ my-app/
 ├── assets/
 ├── ols.json
 └── opencode.json
+```
+
+Inside a git repository:
+
+```sh
+git submodule add https://github.com/carabalonepaulo/ui.git ui
+git submodule update --init --recursive
+```
+
+Or, for a quick experiment, a plain clone works the same:
+
+```sh
+git clone https://github.com/carabalonepaulo/ui.git ui
 ```
 
 `ols.json` (editor/OLS support):
@@ -83,9 +96,9 @@ A local checkout works the same way; point the collection anywhere:
 odin run src -collection:ui=../odin/ui
 ```
 
-For reproducibility, use a git submodule at `ui/` instead of an ignored clone;
-the collection and imports are identical. Remove `/ui` from `.gitignore` if you
-track it as a submodule.
+A submodule pins the exact library commit. Update it deliberately with
+`git submodule update --remote ui` (or check out a tag inside `ui/`) and commit
+the gitlink.
 
 Enable this skill in the app with `opencode.json`. The path is relative to the
 app's working directory:
@@ -98,27 +111,34 @@ app's working directory:
 ```
 
 Alternatively, copy `ui/.opencode/skills/ui-app` into `.opencode/skills/` if you
-want the skill committed with the app and independent of the library clone path.
+want the skill committed with the app and independent of the library path.
 For a global install, copy it to `~/.config/opencode/skills/ui-app`. If the
 library is not at `./ui`, adjust the `skills` path accordingly (for example
 `../odin/ui/.opencode/skills`).
 
 ### Starter template
 
-The fastest path is the starter repository, which already has the collection,
-configs, pages, and backend:
+The starter repository already has the submodule, collection, configs, pages,
+and backend:
 
 ```sh
-git clone https://github.com/carabalonepaulo/ui-demo.git my-app
+git clone --recurse-submodules https://github.com/carabalonepaulo/ui-demo.git my-app
 cd my-app
-just setup      # clones carabalonepaulo/ui into ./ui
 just run
 ```
 
+If it was cloned without submodules:
+
+```sh
+git submodule update --init --recursive
+just run
+```
+
+`just run`, `build`, `check`, and `screenshot` all initialize the submodule.
 Without `just`:
 
 ```sh
-git clone https://github.com/carabalonepaulo/ui.git ui
+git submodule update --init --recursive
 odin run src -collection:ui=ui
 ```
 
