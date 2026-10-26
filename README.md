@@ -22,12 +22,12 @@ LICENSE
 
 ## Use it in an application
 
-The application lives in its own repository. Clone this repository inside it and
-resolve the package through an Odin collection:
+The application lives in its own repository. Link this repository as a git
+submodule and resolve the package through an Odin collection:
 
 ```text
 my-app/
-├── ui/                  # this repository
+├── ui/                  # this repository (git submodule)
 │   ├── ui/              # library package
 │   └── test/
 ├── src/
@@ -35,6 +35,13 @@ my-app/
 ├── assets/
 └── ols.json
 ```
+
+```sh
+git submodule add https://github.com/carabalonepaulo/ui.git ui
+git submodule update --init --recursive
+```
+
+For a quick experiment, a plain clone works the same:
 
 ```sh
 git clone https://github.com/carabalonepaulo/ui.git ui
