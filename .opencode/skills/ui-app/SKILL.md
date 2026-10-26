@@ -83,6 +83,10 @@ A local checkout works the same way; point the collection anywhere:
 odin run src -collection:ui=../odin/ui
 ```
 
+For reproducibility, use a git submodule at `ui/` instead of an ignored clone;
+the collection and imports are identical. Remove `/ui` from `.gitignore` if you
+track it as a submodule.
+
 Enable this skill in the app with `opencode.json`. The path is relative to the
 app's working directory:
 

@@ -36,6 +36,10 @@ my-app/
 └── ols.json
 ```
 
+```sh
+git clone https://github.com/carabalonepaulo/ui.git ui
+```
+
 `ols.json`:
 
 ```json
