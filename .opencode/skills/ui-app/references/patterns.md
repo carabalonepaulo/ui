@@ -6,12 +6,11 @@ copy-pasteable.
 ## App shell
 
 Because scopes do not flow, an app shell is easiest with absolute regions and
-one block per region:
+one block per region. The shell owns chrome; the current page owns the content:
 
 ```odin
 app_draw :: proc(ud: rawptr) {
     size := app.scale.logical_size
-    next_view := app.view
 
     ui.scope(size)
     ui.fill_rect(C_BG)
@@ -22,24 +21,105 @@ app_draw :: proc(ud: rawptr) {
     }
     {
         ui.scope_at({0, HEADER_H}, {SIDEBAR_W, size.y - HEADER_H - FOOTER_H})
-        next_view = draw_sidebar(app.view)
+        draw_sidebar()
     }
     {
         ui.scope_at({SIDEBAR_W, HEADER_H},
                     {size.x - SIDEBAR_W, size.y - HEADER_H - FOOTER_H})
-        draw_content(app.view)
+        ui.fill_rect(C_BG)
+        if page := app.find_page(app.current_page); page != nil {
+            page.on_update(page.self)
+        }
     }
     {
         ui.scope_at({0, size.y - FOOTER_H}, {size.x, FOOTER_H})
         draw_footer()
     }
 
-    app.view = next_view
+    app.apply_pending_page()
 }
 ```
 
 The outer `ui.scope(size)` is closed at the end of `app_draw`. Each `{ ... }`
 block creates a sibling region and closes its scope before the next one starts.
+
+## Pages and injected context
+
+The reference architecture lives in `demo/pages/` and `demo/app.odin`. It is not
+part of the library; copy or adapt it for applications.
+
+```odin
+// pages/pages.odin
+Context :: struct {
+    go_to:               proc(page: Page, ud: rawptr = nil),
+    set_scroll_modifier: proc(modifier: f32),
+    load_font:           proc(name: string, size: f64) -> ui.Font,
+    scale_info:          proc() -> Scale_Info,
+}
+
+Interface :: struct {
+    self:      rawptr,
+    page:      Page,
+    label:     string,
+    on_ready:  proc(self: rawptr, ctx: Context),
+    on_enter:  proc(self: rawptr, ud: rawptr),
+    on_update: proc(self: rawptr),
+    on_exit:   proc(self: rawptr),
+    destroy:   proc(self: rawptr),
+}
+```
+
+A page keeps its own state and receives everything shared through `Context`:
+
+```odin
+State :: struct {
+    ctx:       pages.Context,
+    font_bold: ui.Font,
+    offset:    f64,
+}
+
+create :: proc() -> pages.Interface {
+    return pages.Interface {
+        self      = new(State),
+        page      = .Dashboard,
+        label     = "Dashboard",
+        on_ready  = auto_cast on_ready,
+        on_enter  = auto_cast on_enter,
+        on_update = auto_cast on_update,
+        on_exit   = auto_cast on_exit,
+        destroy   = auto_cast destroy,
+    }
+}
+
+on_ready :: proc(self: ^State, ctx: pages.Context) {
+    self.ctx = ctx
+    self.font_bold = ctx.load_font("bold", 16)
+}
+
+on_update :: proc(self: ^State) {
+    // draw inside the content scope provided by the shell
+}
+```
+
+The app:
+
+* constructs each page from a `PAGE_CTORS` array and calls `on_ready(ctx)`,
+* calls the current page's `on_update` inside the content region,
+* queues `go_to` changes and applies them at the end of the frame, so payloads
+  allocated on the frame arena are still valid,
+* calls `on_exit` before `on_enter` and `destroy` at shutdown,
+* implements `load_font` once (font registry) for all pages.
+
+Adding a page is: a new `State`, a `create`, a `PAGE_CTORS` entry, and an enum
+value. The shell and sidebar pick it up automatically.
+
+Font loading crosses systems, so it belongs in `Context`:
+
+```odin
+self.font_body = ctx.load_font("regular", 13)
+```
+
+`size` is a hint for per-size atlases; an on-demand rasterizer can ignore it.
 
 ## Measure + align a single line
 
@@ -298,8 +378,9 @@ contents and expect zero-latency layout.
 
 ```odin
 debug := ui.get(ui.id("app/debug"), bool)
-if rl.IsKeyPressed(.D) do debug^ = !(debug^)
-if debug^ do ui.popup({0, 0}, app.scale.logical_size, ui.profiler)
+// Replace with your backend's key query; the raylib demo uses rl.IsKeyPressed.
+if key_pressed(.D) do debug^ = !(debug^)
+if debug^ do ui.popup({0, 0}, root_size, ui.profiler)
 ```
 
 `ui.profiler` draws a 300px panel with frame/input/deferred/evict timings and

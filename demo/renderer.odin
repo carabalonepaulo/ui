@@ -3,6 +3,7 @@ package demo
 import "core:fmt"
 import "core:math"
 import "core:os"
+import "core:strings"
 import ui "../ui"
 import fs "vendor:fontstash"
 import rl "vendor:raylib"
@@ -13,11 +14,22 @@ import rl "vendor:raylib"
 ATLAS_INIT_SIZE :: 1024
 MAX_FONTS :: 8
 
+Font_File :: struct {
+	name: string,
+	path: string,
+}
+
+FONT_FILES := [?]Font_File {
+	{"regular", "assets/fonts/StrichpunktSans-Regular.ttf"},
+	{"bold", "assets/fonts/StrichpunktSans-Bold.ttf"},
+}
+
 Renderer :: struct {
 	fs:           fs.FontContext,
 	atlas:        rl.Texture2D,
 	scratch:      []u8,
 	font_ids:     [MAX_FONTS]int,
+	font_names:   [MAX_FONTS]string,
 	font_count:   int,
 	default_font: ui.Font,
 }
@@ -26,12 +38,8 @@ renderer_init :: proc(r: ^Renderer) {
 	fs.Init(&r.fs, ATLAS_INIT_SIZE, ATLAS_INIT_SIZE, .TOPLEFT)
 	renderer_ensure_atlas(r)
 
-	r.default_font = renderer_load_font(
-		r,
-		"regular",
-		asset_path("assets/fonts/StrichpunktSans-Regular.ttf"),
-	)
-	renderer_load_font(r, "bold", asset_path("assets/fonts/StrichpunktSans-Bold.ttf"))
+	r.default_font = renderer_get_font(r, "regular")
+	renderer_get_font(r, "bold")
 }
 
 // Works from the repository root (`odin run demo`) and from `demo/` (`just run`).
@@ -48,6 +56,9 @@ renderer_deinit :: proc(r: ^Renderer) {
 	}
 	delete(r.scratch)
 	r.scratch = nil
+	for i in 0 ..< r.font_count {
+		delete(r.font_names[i])
+	}
 	fs.Destroy(&r.fs)
 }
 
@@ -58,9 +69,30 @@ renderer_load_font :: proc(r: ^Renderer, name, path: string) -> ui.Font {
 	assert(id >= 0, "failed to load font")
 
 	r.font_ids[r.font_count] = id
+	r.font_names[r.font_count] = strings.clone(name)
 	font := ui.Font(r.font_count)
 	r.font_count += 1
 	return font
+}
+
+// Pages ask the app for a font through pages.Context.load_font. This is the
+// registry behind that request. Fontstash handles are size-independent, so the
+// same handle can be used at any font_size.
+renderer_get_font :: proc(r: ^Renderer, name: string) -> ui.Font {
+	for i in 0 ..< r.font_count {
+		if r.font_names[i] == name {
+			return ui.Font(i)
+		}
+	}
+
+	for file in FONT_FILES {
+		if file.name == name {
+			return renderer_load_font(r, file.name, asset_path(file.path))
+		}
+	}
+
+	fmt.eprintln("font not registered:", name)
+	return r.default_font
 }
 
 renderer_font_index :: proc(r: ^Renderer, font: ui.Font) -> int {

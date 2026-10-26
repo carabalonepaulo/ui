@@ -5,27 +5,10 @@ import "core:mem"
 import "core:os"
 import "core:strconv"
 import "core:strings"
+import "kit"
 import ui "../ui"
 import rl "vendor:raylib"
 import rlgl "vendor:raylib/rlgl"
-
-FONT_REGULAR :: ui.Font(0)
-FONT_BOLD :: ui.Font(1)
-
-App :: struct {
-	renderer:              Renderer,
-	scale:                 UIScale,
-	cards:                 []Card_State,
-	grid_offset:           f64,
-	view:                  int,
-	pending_scale:         f64,
-	pending_render_scale:  f64,
-	wheel:                 Smooth_Wheel,
-	screenshot_path:       string,
-	screenshot_frames:     int,
-}
-
-app: App
 
 Smooth_Wheel :: struct {
 	current:  f64,
@@ -95,7 +78,7 @@ CALLBACKS :: ui.Callbacks {
 		return ui_scale_mouse_pos(&app.scale)
 	},
 	get_mouse_wheel = proc() -> ui.Vec2 {
-		step := 48.0 / max(app.scale.ui_scale, 0.25)
+		step := (48.0 + app.scroll_modifier) / max(app.scale.ui_scale, 0.25)
 		return {0, smooth_wheel(&app.wheel, step)}
 	},
 	is_mouse_pressed = proc(btn: ui.Mouse_Button) -> bool {
@@ -159,9 +142,6 @@ main :: proc() {
 	// Mipmap generation logs at INFO every frame; warnings and errors still show.
 	rl.SetTraceLogLevel(.WARNING)
 
-	app.cards = make([]Card_State, CARD_COUNT)
-	defer delete(app.cards)
-
 	renderer_init(&app.renderer)
 	defer renderer_deinit(&app.renderer)
 
@@ -170,12 +150,15 @@ main :: proc() {
 	assert(ui.init(CALLBACKS, 65_536, 8 * mem.Megabyte), "failed to init ui")
 	defer ui.deinit()
 
+	app_init()
+	defer app_deinit()
+
 	for !rl.WindowShouldClose() {
 		handle_keys()
 		apply_pending()
 
 		rl.BeginDrawing()
-		rl.ClearBackground(transmute(rl.Color)(C_WINDOW_BG))
+		rl.ClearBackground(transmute(rl.Color)(kit.C_WINDOW_BG))
 		ui_poll(app_draw)
 		take_screenshot_if_requested()
 		rl.EndDrawing()
@@ -203,7 +186,7 @@ parse_args :: proc() {
 		case "--view":
 			if i + 1 < len(os.args) {
 				if view, ok := strconv.parse_int(os.args[i + 1], 10); ok {
-					app.view = clamp(view, 0, NAV_COUNT - 1)
+					app.start_page_index = clamp(view, 0, len(PAGE_ORDER) - 1)
 				}
 				i += 2
 			} else {

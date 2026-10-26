@@ -33,23 +33,24 @@ if container.cursor.x > max_width do max_width = container.cursor.x
 ```
 
 Both `text` and `measure_text` now report the clamped container width for an
-overlong single line. If you maintain a vendored copy of `ui/text.odin`, apply
-the same two changes there.
+overlong single line. If your project carries its own copy of `ui/text.odin`,
+apply the same changes there.
 
 ## Design limitations
 
 ### Scopes and containers do not advance the parent cursor
 
 `scope`, `scope_at`, `flex`, `stack`, `wrap`, `list`, and `grid` do not move the
-parent cursor. `list`/`grid`/`wrap` own their internal layout. Consequence:
-two sibling `scope` calls overlap at the same position unless wrapped in blocks
-with `next` or placed with `scope_at`.
+parent cursor. `list`/`grid`/`wrap` own their internal layout. Two sibling
+`scope` calls overlap at the same position unless wrapped in blocks with `next`
+or placed with `scope_at`.
 
-If you want flow:
+To get flow:
 
 * `stack`/`flex`/`wrap` + `ui.next` for children,
 * `scope_at` for regions,
-* `padding`/`center` for groups.
+* `padding`/`center` for groups,
+* `flex` for distributing known space.
 
 Auto-sized containers (`stack`, `center` with `AUTO`, `text` with `AUTO`) use the
 previous frame's size and converge one frame late. Do not rely on zero-latency
@@ -59,8 +60,8 @@ reflow.
 
 `begin_scope` computes `scope.clip = intersect(parent.clip, rect)` regardless of
 the `.Clip` flag. Hit testing uses `clip`, so a child that draws outside its
-parent's rect cannot be hovered there. There is no `overflow: visible` mode for
-input. Render popups in the root coordinate space instead.
+parent's rect cannot be hovered there. There is no overflow-visible mode for
+input. Render overlays/popups in the root coordinate space instead.
 
 ### `.Pressed` on culled scopes
 
@@ -72,104 +73,95 @@ when rows leave the viewport.
 
 ### Text tokenizer
 
-The repository's tokenizer splits on spaces (`.Word`) or runes (`.Letter`). It
-does not treat `\n` as a line break. A newer vendored copy (for example
-`maze-puzzle/deps/ui/text.odin`) does; do not assume the repository version and
-the vendored version are identical. Split paragraphs into separate `text` calls
-if needed.
+The tokenizer splits on spaces (`.Word`) or runes (`.Letter`). It does not treat
+`\n` as a line break. Split paragraphs into separate `text` calls if needed.
 
-### Letter spacing and backend measure quirks
+### Backend measure quirks
 
-The token step is `measured_width + letter_spacing`. Raylib's `MeasureTextEx`
-already includes one trailing spacing for a single character, so a space token
-can be slightly wider than expected. This is cosmetic; use a fontstash backend
-if you need exact metrics.
+The token step is `measured_width + letter_spacing`. Some backends include a
+trailing spacing when measuring a single character, so a space token can be
+slightly wider than expected. This is cosmetic; fix it in the backend's
+`measure_text` if exact metrics matter.
 
-### Formatting is not a bug
+### `format_bytes` is not a bug
 
 `format_bytes` assigns `context.allocator = get_temp_allocator()` inside the
 procedure. In Odin, `context` is a value; the assignment affects callees made
-from that procedure (which is the intent) and does not leak to the caller. Do
-not "fix" it by restoring the allocator.
+from that procedure (which is the intent) and does not leak to the caller.
 
-## Backend pitfalls
+## Backend integration pitfalls
 
 ### `ui.deinit()` is mandatory
 
-Unloading the render texture is not enough. `ui.deinit()` frees the scope
-buffers, interest buffers, deferred queues, store, and arena. The attached
-`maze-puzzle/src/ui.odin` originally only unloaded the texture and leaked
-everything else.
+Releasing the render target is not enough. `ui.deinit()` frees the scope
+buffers, interest buffers, deferred queues, store, and frame arena. A backend
+that only destroys its target leaks the UI context.
 
 ### Do not put `any` values in deferred payloads
 
-A popup runs after the procedure that queued it returns. An `any` holding a
-string typically points at a stack temporary for the string header; the header
-is dead by the time the popup reads it. This produced empty/garbage text in
-`maze-puzzle`'s cell popup. Store concrete strings (`[3]string`) or allocate the
-payload on `ui.get_temp_allocator()`.
+A popup (or any deferred callback) runs after the procedure that queued it
+returns. An `any` holding a string typically points at a stack temporary for the
+string header; the header is dead by the time the popup reads it. Store concrete
+strings (`[3]string`) or allocate the payload on `ui.get_temp_allocator()`.
 
-### Draw before/after the batch
+This is not hypothetical: it produced empty/garbage text in a cell tooltip.
 
-Raylib batches draw calls. A screenshot/readback taken between the UI blit and
-`EndDrawing` sees a black frame. Flush with `rlgl.DrawRenderBatchActive()`
-before `LoadImageFromScreen`/readback. `TakeScreenshot` also flushes internally
-because it is called from `EndDrawing`; calling it yourself before
-`EndDrawing` still needs a flush.
+### Batched backends need a flush before readback
 
-`TakeScreenshot` prepends the working directory and explicitly documents that
-the filename must not contain a path. For arbitrary paths use
-`LoadImageFromScreen` + `ExportImage`.
+If the backend batches draw calls, a screenshot/readback taken between the UI
+blit and the end-of-frame flush sees an incomplete frame. Flush the batch before
+reading the framebuffer. The raylib backend reference has the specific call.
 
-### `UpdateTextureRec` takes packed rows
+### Texture updates need packed rows
 
-The pixel pointer must contain `rec.width * bytes_per_pixel` per row, not a
-sub-rect of a larger buffer. Build a temporary tightly packed buffer (the demo
-does) or update the whole texture.
+If the backend updates a sub-rectangle of a texture, the pixel pointer usually
+has to contain `rec.width * bytes_per_pixel` per row, not a slice of the full
+texture. Build a packed staging buffer.
 
 Do not allocate that staging buffer from the UI frame arena: a full-atlas upload
-at high supersampling can be much larger than the arena (typically 8 MB). Use a
-reusable heap buffer owned by the renderer. This was a real crash in the demo at
-`scale 4, ssaa 4`.
+at high supersampling can be much larger than the arena (8 MB by default). Use a
+reusable buffer owned by the backend.
 
-### `TRILINEAR` without mipmaps is bilinear
+### Filtering and mipmaps
 
-`SetTextureFilter(.TRILINEAR)` only uses mipmaps if they exist. Generate them
-after drawing (`GenTextureMipmaps`) or use `.BILINEAR`. For exactly 2x,
-bilinear is already a 2x2 box filter; for 3x/4x, generate mipmaps or use a
-downsample shader.
+Linear filtering only samples a 2x2 texel footprint. For exactly 2x
+downsampling that is a box filter; for 3x/4x or fractional scaling it
+undersamples. Generate mipmaps and use trilinear filtering for larger
+downscales, or use a box-filter shader. `TRILINEAR` without generated mipmaps is
+just bilinear. See `references/scaling.md`.
 
-### Scissor Y in a render texture
+### Scissor coordinate systems
 
-Raylib 5.5/6.0 flips scissor Y against `CORE.Window.currentFbo.height` when an
-FBO is active. Pass top-left coordinates in target pixels. Flipping again clips
-the wrong rows.
+The UI passes top-left logical rectangles. The backend must convert them to its
+framebuffer convention. Some APIs use bottom-left scissor coordinates; flip once
+against the current target height and do not flip twice. Clamp the rect to the
+target.
 
 ### Font atlas scale
 
-The glyph atlas must be rasterized at the physical size used to draw. A 2x
-atlas with a camera zoom of 2 is fine; the same atlas with zoom 1.5 or 3 is not.
-Fontstash handles this naturally because it rasterizes on demand; raylib font
-atlases need a cache keyed by `ppu` (see the `maze-puzzle` patch).
+A glyph atlas must be rasterized at the physical size used to draw. A 2x atlas
+with a camera zoom of 2 is fine; the same atlas with zoom 1.5 or 3 is not. A
+backend that rasterizes on demand handles this naturally; a per-size atlas needs
+a cache keyed by `pixels_per_unit`. See `references/backends/raylib.md`.
 
 ### High-DPI
 
-`GetScreenWidth/Height` are window coordinates; `GetRenderWidth/Height` can be
-the physical framebuffer. Mouse positions are in screen coordinates. Pick one
-destination space and be consistent. `render_scale = DPI scale` is a simple way
-to get a physical-resolution texture while keeping screen-coordinate layout.
+Window coordinates and framebuffer coordinates can differ. Decide which one the
+destination rectangle, mouse position, and layout use, and be consistent.
+`render_scale = DPI scale` is a simple way to get a physical-resolution target
+while keeping screen-coordinate layout.
 
 ## Debugging checklist
 
 1. Nothing draws: is `ui.frame()` called, is a root scope open, is the backend
-   drawing into the right target, is the render texture bound?
+   drawing into the right target, is the target bound?
 2. Wrong positions: are scopes siblings or nested? Did you forget a `{ ... }`
    block? Is the parent cursor still at the old position?
 3. Text missing: does the font handle exist? Is the text's `Text_Options` the
    same as when measured? Is the atlas uploaded before drawing? Is the glyph
    outside the clip?
-4. Text blurry: is the backend drawing at the physical size? Is the final blit
-   upscaling?
+4. Text blurry: is the backend drawing at the physical size? Is the present
+   upscaling the target?
 5. Input dead: is the scope's `clip` non-empty? Does it have any `bind`? Is a
    child with interests on top? Is the mouse mapping in logical coordinates?
 6. State resets: is the `ui.get` entry touched every frame? Did the id change?

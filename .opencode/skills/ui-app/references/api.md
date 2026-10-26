@@ -44,7 +44,7 @@ Anchor :: enum { Top_Left, Top, Top_Right, Left, Center, Right,
                  Bottom_Left, Bottom, Bottom_Right }
 
 Mouse_Button :: enum i32 { Left, Right, Middle, Side, Extra, Forward, Back }
-Keyboard_Key :: enum i32 { ...raylib-compatible values... }
+Keyboard_Key :: enum i32 { ... }   // values map 1:1 to raylib's KeyboardKey
 ```
 
 ## Context and frame (`ui/context.odin`)
@@ -159,7 +159,7 @@ text(uid: Id, size: Vec2, text: string, opts: Text_Options, flags: Scope_Flags =
   the next token does not fit, and draws each token.
 * `scroll` binds `get(id(uid, 'x'/'y'), f64)` on the text scope.
 * Newlines are not special in this repository's tokenizer; split paragraphs
-  manually or use a vendored newer tokenizer.
+  manually or extend the tokenizer.
 
 ## Layout
 
@@ -213,11 +213,10 @@ content height). Bind `.Scroll_Y` on the inner scope for scrolling.
 
 ```odin
 list(offset: ^f64, size: Vec2, count: int, item_height, gap: f64,
-     ud: rawptr, item: proc(i: int, ud: rawptr),
-     flags: Scope_Flags = {}, item_flags: Scope_Flags = {})   // vendored variant
+     ud: rawptr, item: proc(i: int, ud: rawptr))
 
 list_with_poly(offset, size, count, item_height, gap, ud: $T,
-               item: proc(i: int, ud: T), flags = {}, item_flags = {})
+               item: proc(i: int, ud: T))
 
 grid(offset: ^f64, size: Vec2, count: int, item_base_size: Vec2, gap: Vec2,
      ud: rawptr, item: proc(i: int, ud: rawptr),
@@ -229,8 +228,9 @@ grid_with_poly(offset, size, count, item_base_size, gap, ud: $T,
 
 Both bind `.Scroll_Y` to `offset`, clamp it at `end_scope`, skip off-screen
 items, and set `content_size`. Grid derives columns and cell aspect from
-`item_base_size`; list uses a fixed `item_height`. The repository's `list` does
-not take flags; pass `.Clip` to `scope` or use a vendored variant if needed.
+`item_base_size`; list uses a fixed `item_height`. `list` always clips its
+container and does not take flags; use `grid` (which does) if you need a custom
+clip policy.
 
 ### Padding / Center / Fit
 
@@ -322,3 +322,68 @@ format_bytes(bytes: u64) -> string
 ```
 
 Use `ui.popup({0, 0}, root_size, ui.profiler)`.
+
+## Demo page framework (not part of the library)
+
+`demo/pages/` contains a small application architecture. It is reference code,
+not a library API. The shell owns chrome and lifecycle; pages own their state and
+drawing.
+
+```odin
+// demo/pages/pages.odin
+Page :: enum { Dashboard, Typography, Scaling }
+
+Scale_Info :: struct {
+    window_size:     [2]int,
+    logical_size:    Vec2,
+    target_size:     [2]int,
+    ui_scale:        f64,
+    render_scale:    f64,
+    pixels_per_unit: f64,
+}
+
+Context :: struct {
+    go_to:               proc(page: Page, ud: rawptr = nil),
+    set_scroll_modifier: proc(modifier: f32),
+    load_font:           proc(name: string, size: f64) -> Font,
+    scale_info:          proc() -> Scale_Info,
+}
+
+Interface :: struct {
+    self:      rawptr,
+    page:      Page,
+    label:     string,
+    on_ready:  proc(self: rawptr, ctx: Context),
+    on_enter:  proc(self: rawptr, ud: rawptr),
+    on_update: proc(self: rawptr),
+    on_exit:   proc(self: rawptr),
+    destroy:   proc(self: rawptr),
+}
+```
+
+Lifecycle:
+
+* `on_ready(self, ctx)` runs once after construction. Store `ctx` and load
+  fonts there.
+* `on_enter(self, ud)` runs when the page becomes current. `ud` is the payload
+  passed to `go_to`; it is valid for the frame in which the switch is applied.
+* `on_update(self)` runs every frame inside the shell's content scope.
+* `on_exit(self)` runs when leaving.
+* `destroy(self)` frees page-owned memory at shutdown.
+
+`demo/app.odin` owns the `PAGE_CTORS` registration array, current/next page,
+`find_page`, `change_page`, and the `Context` implementation. A page is added
+without touching the shell:
+
+```odin
+PAGE_CTORS :: [?]proc() -> pages.Interface {
+    dashboard.create,
+    typography.create,
+    scaling.create,
+    // new_page.create,
+}
+```
+
+The app applies queued `go_to` calls at the end of the frame, so payloads
+allocated from the UI frame arena are still alive.
+

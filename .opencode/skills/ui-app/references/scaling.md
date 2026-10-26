@@ -1,279 +1,207 @@
-# Scaling and the raylib/fontstash backend
+# Scaling
 
-The UI library has no concept of a screen, a window, DPI, or a camera. It only
-knows logical units. Scaling belongs to the backend, and the canonical
-implementation is `demo/scale.odin`.
+The UI library works in logical units. Scaling is entirely a backend concern:
+pick a destination rectangle on the window, render the logical tree into an
+offscreen target at a physical resolution, then present that target. The
+library never needs to know about DPI, cameras, or texture sizes.
 
 ## Two independent factors
 
 ```text
 ui_scale       logical -> screen size  (1 = 100%, 2 = everything twice as big)
-render_scale   supersampling factor    (1 = no SSAA, 2 = render at 2x then downscale)
+render_scale   supersampling factor    (1 = none, 2 = render at 2x then downscale)
 pixels_per_unit (ppu) = ui_scale * render_scale
 ```
 
-At a window size `dest_size`:
+For a destination of `dest_size` (window/screen units):
 
 ```text
 texture_size = ceil(dest_size * render_scale)
-logical_size = texture_size / ppu        // the UI coordinate space
+logical_size = texture_size / ppu
 ```
 
-This makes the mapping exact: one logical unit is `ppu` physical texels, and the
-texture covers the whole logical space. The final blit stretches the texture to
-`dest_size`; that stretch is by `render_scale` only, not by `ui_scale`.
+This mapping is exact: one logical unit is `ppu` physical texels, and the
+texture covers the whole logical space. The final present stretches the texture
+to `dest_size`; that stretch is by `render_scale` only, not by `ui_scale`.
 
-Why not `logical_size = dest_size / ui_scale` and `tex = logical * ppu`? Because
-truncating `tex` to an integer then re-deriving logical gives sub-texel
-mismatches. Deriving logical from the integer texture keeps the mapping exact.
-The destination is stretched by at most one texel.
+Why not `logical_size = dest_size / ui_scale` and `texture = logical * ppu`?
+Truncating the texture to integers and re-deriving the logical size introduces
+sub-texel mismatches. Deriving the logical size from the integer texture keeps
+the mapping exact; the destination is stretched by at most one texel.
 
-## The render pass
+`ui_scale` alone does not change the texture size (texture = dest *
+render_scale); it changes `ppu` and `logical_size`. `render_scale` changes both
+the texture size and `ppu`.
+
+## Render pass
 
 ```odin
-ui_scale_begin(&app.scale)
+begin_offscreen_target(target)
+
 {
     ui.frame()
-    ui.scope(app.scale.logical_size)
-    app_draw()
+    ui.scope(logical_size)
+    draw_app()
 }
-ui_scale_end(&app.scale)
+
+end_offscreen_target()
+present(target, dest_rect)
 ```
 
 `ui.frame()` and the root scope must be inside the same block: their deferred
-ends run in reverse order there, before the render target is unbound. Popups
-drawn by `end_frame` are also inside the texture.
+ends run in reverse order there, while the target is still bound. Deferred
+popups run in `end_frame`, so they must also be inside the target pass.
 
-`ui_scale_begin`:
+The target should be cleared before drawing. If the UI root covers every texel,
+a transparent clear is fine; otherwise clear to the app background.
 
-```odin
-rl.BeginTextureMode(s.target)
-rl.ClearBackground(rl.BLANK)     // root fill usually covers everything
-s.active = true
-```
+## Transform callbacks, not a camera
 
-`ui_scale_end`:
+The cleanest backend transforms coordinates in the draw callbacks and uses no
+camera:
 
 ```odin
-s.active = false
-rl.EndTextureMode()
-
-if s.render_scale > 2 {
-    rl.GenTextureMipmaps(&s.target.texture)
-    rl.SetTextureFilter(s.target.texture, .TRILINEAR)
-} else {
-    rl.SetTextureFilter(s.target.texture, .BILINEAR)
-}
-
-source := rl.Rectangle{0, 0,
-    f32(s.target.texture.width),
-    -f32(s.target.texture.height)}   // render textures are vertically flipped
-
-dest := rl.Rectangle{f32(dest_pos.x), f32(dest_pos.y),
-                     f32(dest_size.x), f32(dest_size.y)}
-
-rl.DrawTexturePro(s.target.texture, source, dest, {0, 0}, 0, rl.WHITE)
-```
-
-At exactly 2x, GL_LINEAR samples a 2x2 texel footprint, which is a box filter;
-that is why `render_scale == 2` is the cheapest good default. Above 2x, the
-2x2 footprint undersamples the supersampled image; mipmaps (or a box-filter
-shader) are required. `TRILINEAR` without generated mipmaps is just bilinear.
-
-Raylib's `GenTextureMipmaps` logs at INFO every call. Either accept the log
-spam or raise the trace level after init (`rl.SetTraceLogLevel(.WARNING)` in the
-demo).
-
-## Transform callbacks, not the camera
-
-The attached `maze-puzzle` code used `Camera2D{zoom = scale * render_scale}`.
-That works for rectangle geometry but has two problems:
-
-1. `draw_rect` rounds/floors coordinates in **logical** space before the camera
-   scales them. At a fractional `ui_scale`, edges land on fractional texels and
-   blur.
-2. `DrawTextEx` rasterizes glyphs at the logical font size, then the camera
-   magnifies them. The glyph atlas must be pre-baked at the zoom factor or the
-   text blurs.
-
-The robust approach is to transform in the callbacks and never use a camera:
-
-```odin
-draw_rect = proc(x, y, w, h: f64, color: ui.Color) {
-    ppu := app.scale.ppu
-    x0 := i32(math.round(x * ppu))
-    y0 := i32(math.round(y * ppu))
-    x1 := i32(math.round((x + w) * ppu))
-    y1 := i32(math.round((y + h) * ppu))
+draw_rect = proc(x, y, w, h: f64, color: Color) {
+    ppu := current_ppu
+    x0 := round(x * ppu)
+    y0 := round(y * ppu)
+    x1 := round((x + w) * ppu)
+    y1 := round((y + h) * ppu)
     if x1 <= x0 || y1 <= y0 do return
-    rl.DrawRectangle(x0, y0, x1 - x0, y1 - y0, transmute(rl.Color)(color))
-}
-
-draw_text = proc(font, text, x, y, size, spacing: f64, color: ui.Color) {
-    ppu := app.scale.ppu
-    renderer_draw_text(&app.renderer, font, text,
-                       x * ppu, y * ppu, size * ppu, spacing * ppu, color)
+    backend_fill_rect(x0, y0, x1 - x0, y1 - y0, color)
 }
 ```
 
-Round both edges in physical space. Do not floor the origin and ceil the size;
-that grows every rectangle by up to one texel and creates seams.
+Round both edges in **physical** space. Flooring the origin and ceiling the
+size in logical space (or before scaling) grows every rectangle by up to one
+texel and creates seams at fractional scales.
+
+A camera can scale rectangles, but it does not solve text: glyphs rasterized at
+a logical size are then magnified by the camera and blur. If you use a camera,
+the glyph atlas must be pre-baked at the same zoom, and changing the zoom
+requires reloading fonts.
+
+## Text at the physical size
+
+`ui.Callbacks.measure_text` and `draw_text` receive logical sizes. The backend
+must convert them:
+
+```odin
+// measure: measure at physical size, then return logical units
+physical := backend_measure(font, text, font_size * ppu, spacing * ppu)
+return physical / ppu
+
+// draw: rasterize/draw at physical size
+backend_draw_text(font, text, x * ppu, y * ppu,
+                  font_size * ppu, spacing * ppu, color)
+```
+
+A backend with a per-size font atlas must key that atlas by the physical size
+(`font_size * ppu`). A backend that rasterizes on demand can keep one handle per
+face and ignore the size; see the raylib backend reference.
+
+`measure_text` must use the same physical size as `draw_text`, otherwise layout
+and glyphs disagree by a scale factor.
 
 ## Mouse mapping
 
-```odin
-ui.Vec2{
-    (mouse.x - dest_pos.x) / dest_size.x * logical_size.x,
-    (mouse.y - dest_pos.y) / dest_size.y * logical_size.y,
-}
+Map from destination/window space into logical space:
+
+```text
+logical.x = (mouse.x - dest.x) / dest.w * logical_size.x
+logical.y = (mouse.y - dest.y) / dest.h * logical_size.y
 ```
 
-Return a far-away sentinel when the cursor is outside the destination rectangle.
-The UI's hit test compares against integer logical clip rects.
+Return a far-away sentinel when the pointer is outside the destination
+rectangle. The UI hit-tests against integer logical clip rects.
 
-## Scissor
+If the backend uses a high-DPI framebuffer, decide whether mouse coordinates and
+the destination are in window units or physical units and be consistent.
 
-Scissor rectangles are in physical texels:
+## Scissor mapping
 
-```odin
-px := i32(math.round(f64(x) * ppu))
-py := i32(math.round(f64(y) * ppu))
-pw := i32(math.round(f64(w) * ppu))
-ph := i32(math.round(f64(h) * ppu))
+`enable_scissors(x, y, w, h: i32)` receives a logical clip rect. Convert it to
+physical texels:
 
-// clamp to the target
-pw = clamp(pw, 0, tw - px)
-ph = clamp(ph, 0, th - py)
-
-rl.BeginScissorMode(px, py, pw, ph)
+```text
+px = round(x * ppu)
+py = round(y * ppu)
+pw = round(w * ppu)
+ph = round(h * ppu)
 ```
 
-Raylib 5.5+ flips the Y coordinate against `CORE.Window.currentFbo.height` when
-rendering into a render texture. Pass top-left coordinates; do **not** flip Y
-yourself. (Older code sometimes flipped twice and clipped the wrong rows.)
+Clamp to the target bounds. Some backends address the framebuffer bottom-up, so
+their scissor Y must be flipped relative to the target height; do it once, in
+the backend, and pass top-left coordinates from the UI. Do not flip twice.
 
-`disable_scissors` should call `rl.EndScissorMode` only when the target is
-active.
+`disable_scissors` should only end the scissor pass that `enable_scissors`
+started.
 
-## Text with fontstash
+## Downsampling
 
-Fontstash rasterizes glyphs at the requested size into a single-channel atlas.
-Raylib's default shader expects RGBA, so mirror the dirty region into white RGB
-+ glyph alpha:
+When `render_scale > 1`, the target is larger than the destination.
 
-```odin
-if fontstash.ValidateTexture(&r.fs, &dirty) {
-    // Expand dirty rect into a tightly packed RGBA buffer.
-    // Row stride must be dw * 4 for UpdateTextureRec.
-    rl.UpdateTextureRec(r.atlas, {x, y, dw, dh}, raw_data(pixels))
-}
-```
+* **Exactly 2x, bilinear.** An output pixel maps to a 2x2 texel footprint; a
+  linear sample at the pixel centre averages those four texels. This is a box
+  filter and is the cheapest good default.
+* **3x/4x, or fractional.** Linear sampling only reads a 2x2 block out of a
+  larger footprint and aliases. Generate mipmaps and use trilinear filtering, or
+  use a box-filter/downsample shader.
+* **1x.** Use bilinear (or point if the mapping is exactly 1:1 and you snap
+  every glyph).
+* **Upscaling** (texture smaller than destination) always loses quality; make
+  sure `texture_size >= dest_size`. This is what `render_scale >= 1` guarantees.
 
-Crucial rules:
-
-* Set fontstash's size to `font_size * ppu`, not `font_size`. That is what makes
-  text crisp at any scale.
-* Set `align_vertical = .TOP` if the UI's `y` is the top of the text box
-  (raylib's `DrawTextEx` semantics). With `.TOPLEFT`, fontstash offsets the
-  baseline by the ascender.
-* Measure with the same physical size and divide by `ppu` to return logical
-  units to the UI.
-* The atlas texture must be uploaded **before** drawing the quads that reference
-  new glyphs. The demo collects quads, flushes the atlas, then draws.
-* If fontstash grows the atlas mid-string, normalized UVs change. The demo
-  retries the whole string after a size change; glyphs are cached, so the retry
-  is cheap.
-* Set the atlas filter to `.BILINEAR` (or `.POINT` if you snap every glyph).
-* A font atlas is a cache keyed by font + pixel size. Changing `ui_scale`
-  generates a new set of glyph sizes.
-* Do not allocate the staging buffer for a dirty-rect upload from the UI frame
-  arena. A full-atlas update at high `render_scale` can be tens of megabytes and
-  exceed the 8 MB arena; keep a reusable heap buffer on the renderer (the demo
-  does this).
-
-`demo/renderer.odin` is the complete implementation: RGBA mirror, dirty-rect
-upload, growth handling, measure, and draw.
-
-## Text with raylib fonts
-
-If you use raylib's own font atlas instead of fontstash:
-
-```odin
-font := rl.LoadFontEx(path, i32(size * ppu), codepoints, count)
-...
-rl.DrawTextEx(font, cstr, {x * ppu, y * ppu}, size * ppu, spacing * ppu, color)
-```
-
-The atlas must be loaded at `size * ppu`. If `ppu` changes, reload the font (or
-key the font cache by `ppu`). The `maze-puzzle` patch does exactly that with a
-`fonts.pixel_scale` global set by the UI backend and includes the scale in the
-font cache key.
-
-Do **not** load a 2x atlas and then draw through a camera at a different
-magnification; sampling the atlas at a non-1:1 ratio blurs or aliases.
+Mipmap generation every frame costs GPU time and may log (backend-dependent).
+Only generate when needed, or replace it with a downsample shader.
 
 ## Target lifecycle
 
-Recreate the render texture when any of these change:
+Recreate the target when:
 
-* destination size (window resize),
-* `render_scale` (texture size),
-* the target is missing.
+* the destination size changes,
+* `render_scale` changes the integer texture size,
+* the target does not exist yet,
+* the graphics device was reset.
 
-`ui_scale` alone does not change the texture size (texture = dest *
-render_scale); it changes `ppu` and `logical_size`. Always update both even when
-the texture is not recreated.
+`ui_scale` alone does not require a new texture (unless the derived integer size
+changes). Always update `ppu` and `logical_size`, even when reusing the target.
 
 Clamp inputs: `ui_scale` in `[0.25, 8]`, `render_scale` in `[1, 4]`. Guard
-against zero-sized windows (minimized).
+against zero-sized/minimized windows. Unload the target on shutdown and call
+`ui.deinit()` for the UI context.
 
-Unload the target in the backend shutdown, and call `ui.deinit()` there too.
-The attached code forgot `ui.deinit()` and leaked the context, store, queues, and
-frame arena.
+## Transparency
 
-## High-DPI
-
-Raylib's `GetScreenWidth/Height` are window (screen) coordinates;
-`GetRenderWidth/Height` can be larger on high-DPI. If you enable
-`FLAG_WINDOW_HIGHDPI`, either:
-
-* treat the render size as the destination and convert mouse coordinates with
-  the DPI scale, or
-* keep the destination in screen coordinates and set `render_scale` to the DPI
-  scale so the texture matches the physical framebuffer.
-
-Mouse coordinates from raylib are in screen space; do not multiply them by DPI.
-
-## Transparency and fringes
-
-`ClearBackground(BLANK)` leaves the texture transparent. If the root does not
-cover every texel (a UI overlay over a game), the final blit blends the texture
-over whatever is already on screen. Bilinear sampling between opaque and
-transparent pixels produces dark fringes because the RGB is not premultiplied.
-Either cover the root or use premultiplied alpha and
-`BLEND_ALPHA_PREMULTIPLY`.
+A transparent target plus the default alpha blend produces dark fringes where
+opaque and transparent texels are sampled together unless the source is
+premultiplied. Either cover the whole target with an opaque root (normal app
+UI), or use premultiplied alpha for overlays.
 
 ## Cost
 
-`render_scale = 2` at 1920x1080 allocates 3840x2160 RGBA (about 33 MB on the
-GPU) and mipmaps it every frame if enabled. At 4K it is 7680x4320 (about 133 MB).
+`render_scale = 2` at 1920x1080 allocates a 3840x2160 RGBA target (about 33 MB
+on the GPU) and optionally a mip chain. At 4K it is 7680x4320 (about 133 MB).
 Measure before shipping. Options:
 
-* `render_scale = 1` and a larger `ui_scale` (text is rasterized at physical
-  size, so it stays sharp; SSAA only helps geometry edges).
+* `render_scale = 1` with a larger `ui_scale` (text is rasterized at the
+  physical size, so it stays sharp; SSAA mainly helps geometry edges).
 * `render_scale = 1.5` with bilinear.
-* A 4-tap box downsample shader at the final blit instead of mipmaps.
-* Reuse the target across frames and only regenerate mipmaps when the UI
-  actually changed.
+* A downsample shader instead of mipmaps.
+* Reuse the target and regenerate mips only when the UI changes.
 
-## Common symptoms
+## Backend checklist
 
-| Symptom | Cause |
-| --- | --- |
-| Text is crisp at 1x, blurry at 1.5x | Glyphs rasterized at logical size, then camera-scaled. Rasterize at `size * ppu`. |
-| Thin lines shift or vanish | Rounding in logical space. Round both edges in physical space. |
-| Clip is offset vertically | Y flipped twice (or not at all) for FBO scissors. |
-| UI looks soft at 2x | `TRILINEAR` without generated mipmaps; or the final blit is upscaling because `tex < dest`. |
-| Text has dark halos | Atlas RGBA mirror set RGB=0 around glyphs, or unpremultiplied blending. Use RGB=255 + alpha. |
-| Fonts pop/blur after changing scale | Font atlas cache not keyed by `ppu`. |
-| Second frame flashes | One-frame `fit`/`center` lag, or glyphs drawn before the atlas upload. Flush before drawing. |
+1. Convert `draw_rect`, `draw_text`, and `measure_text` with `ppu`.
+2. Round edges/sizes in physical space.
+3. Rasterize text at `size * ppu`.
+4. Map mouse positions back to logical space.
+5. Convert scissor rects to physical texels and clamp.
+6. Size the target as `ceil(dest * render_scale)`.
+7. Present with the correct vertical orientation.
+8. Use mipmaps or a box filter for large downscale factors.
+9. Recreate the target on resize/scale changes.
+10. Call `ui.deinit()` and release backend resources.
+
+For a complete implementation, see `demo/scale.odin` and
+`references/backends/raylib.md`.
