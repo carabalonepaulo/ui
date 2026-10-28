@@ -12,7 +12,7 @@ Odin-native port in `vendor:fontstash`.
 | File | Purpose |
 | --- | --- |
 | `src/main.odin` | Window, `ui.Callbacks`, frame loop, wheel smoothing, CLI. |
-| `src/scale.odin` | Render target, physical-pixel callbacks, mouse/scissor mapping. |
+| `src/scale.odin` | rlgl modelview scale, physical-pixel callbacks, mouse/scissor mapping. |
 | `src/renderer.odin` | Fontstash atlas, font registry, glyph quads. |
 | `src/app.odin` | Shell and page lifecycle (`go_to`, `load_font`). |
 | `src/pages/` | Page framework and screens. |
@@ -37,54 +37,85 @@ The other fields are reserved. `get_delta_time`, `get_default_font`,
 `load_texture`, `load_font`, `draw_texture`, `is_mouse_down/up`, and the key
 callbacks are currently not called by the library.
 
-All draw/measure coordinates from the UI are logical. The starter converts them
-to the render target's physical pixels using `ppu = ui_scale * render_scale`.
+All draw/measure coordinates from the UI are logical. The starter runs the whole
+frame under an rlgl modelview scale of `ppu = ui_scale * dpi_scale`, so every
+draw call (including `rl.Draw*` calls a component makes directly) becomes
+physical pixels. No render target is involved.
 
-## Render target
+## Modelview scale
 
 `src/scale.odin`:
 
 ```text
-texture_size = ceil(dest_size * render_scale)
-logical_size = texture_size / ppu
+ppu          = ui_scale * dpi_scale
+logical_size = window_size / ppu
 ```
 
-* `BeginTextureMode(target)` + `ClearBackground(BLANK)`.
-* Run `ui.frame()`, the root scope, and the app draw inside one block.
-* `EndTextureMode()`.
-* `GenTextureMipmaps` + `TRILINEAR` when `render_scale > 2`; otherwise
-  `BILINEAR`. (At exactly 2x, GL_LINEAR is a 2x2 box filter.)
-* Present with `DrawTexturePro`. Raylib render textures are vertically flipped,
-  so use a negative source height:
+* `rlgl.PushMatrix()` + `rlgl.Scalef(ppu, ppu, 1)` before `ui.frame()`.
+* `ui.frame()`, the root scope, and the app draw inside one block.
+* `rlgl.PopMatrix()` after the block.
+
+rlgl bakes the transform into the vertices on submission, so the matrix costs
+nothing, does not flush the batch, and can be pushed/popped mid-frame (the text
+callback does exactly that).
+
+In raylib 6 the matrix API lives in `vendor:raylib/rlgl`
+(`rlgl.PushMatrix`, `rlgl.Scalef`, `rlgl.PopMatrix`), not in `rl`, and it needs
+`import rlgl "vendor:raylib/rlgl"`.
+
+Consequences for the callbacks:
+
+* `draw_rect` draws in logical units; no `* ppu`.
+* `draw_text` pops the matrix, draws at `size * ppu`, pushes it back.
+* `measure_text` measures at `size * ppu` and returns `physical / ppu`.
+* `enable_scissors` still converts to framebuffer pixels (`glScissor` is not
+  part of the transform).
+* `get_mouse_pos` still divides by `ppu`.
+
+Do not apply `ppu` in the callbacks *and* use the matrix: that doubles the scale.
+
+### Snapping
+
+At fractional scales a 1 logical px line aliases. Snap both rectangle edges in
+physical space:
 
 ```odin
-source := rl.Rectangle{0, 0, f32(tex.width), -f32(tex.height)}
-dest := rl.Rectangle{dest_pos.x, dest_pos.y, dest_size.x, dest_size.y}
-rl.DrawTexturePro(tex, source, dest, {0, 0}, 0, rl.WHITE)
+snap :: proc(v, ppu: f64) -> f64 { return math.round(v * ppu) / ppu }
 ```
 
-`GenTextureMipmaps` logs at INFO every call. The starter raises the trace level to
-`.WARNING` after init. If the log is useful, lower it again or only generate
-mips when the content changes.
+`ui_scale_draw_rect` does this for `ui.draw_rect`. Raw `rl.*` rectangles are not
+snapped; the demo exposes a toggle (`S`, `--no-snap`) to show the difference.
+
+### When to keep a render target
+
+A small 2D/3D world, a fixed virtual resolution, or a post-process pass still
+needs its own target. Draw it into a small `LoadRenderTexture` and present it as
+a texture inside the UI. Do not run `BeginMode3D` between the matrix push and
+pop: `EndMode3D` resets the modelview that the matrix stack is using, and the UI
+scale leaks and compounds (2x, 4x, 8x, off-screen). See
+`references/scaling.md`.
 
 ### Scissor
 
-Raylib 5.5/6.0 flips scissor Y against `CORE.Window.currentFbo.height` when a
-render target is active. Pass top-left coordinates in target pixels; do not flip
-again:
+`glScissor` is in framebuffer pixels, so `enable_scissors` converts the logical
+rect by `ppu` and clamps it to the window:
 
 ```odin
-rl.BeginScissorMode(px, py, pw, ph)
+px := round(x * ppu); py := round(y * ppu)
+pw := round(w * ppu); ph := round(h * ppu)
+rl.BeginScissorMode(clamp(px, 0, width), clamp(py, 0, height), ...)
 ```
 
-Clamp `px/py` to `[0, width/height]` and `pw/ph` to the remaining size before
-calling. `EndScissorMode` only while the target is active.
+Raylib flips Y against the active framebuffer height internally. With no render
+target bound that height is the window, so pass top-left coordinates either way
+and do not flip again. If the UI is drawn into a target, clamp to the target's
+size instead of the window's.
 
 ### Mouse
 
 ```odin
-if inside(dest_rect, mouse) {
-    logical = (mouse - dest_pos) / dest_size * logical_size
+if inside(window, mouse) {
+    logical = mouse / ppu
 } else {
     logical = {-1e9, -1e9}
 }
@@ -113,11 +144,11 @@ Key points:
   temporary buffer with `width = rec.width`, not a slice of the full atlas.
 * Keep that staging buffer on the renderer using the normal allocator. A full
   atlas upload can exceed the UI frame arena (8 MB by default), especially at
-  high `render_scale`. This was a real crash in the starter at `scale 4, ssaa 4`.
+  high `ppu` with a large atlas. This was a real crash in the starter.
 * Set the atlas filter to `.BILINEAR`. With pixel-snapped quads, `.POINT` also
   works; `.BILINEAR` avoids hard edges.
-* A per-size glyph cache means changing `ui_scale` or `render_scale` creates new
-  glyph sizes. That is normal; watch atlas growth.
+* A per-size glyph cache means changing `ppu` creates new glyph sizes. That is
+  normal; watch atlas growth, and quantize the pixel size if the zoom is smooth.
 
 The complete implementation is `ui-demo/src/renderer.odin`.
 
@@ -141,23 +172,23 @@ Otherwise a 2x atlas sampled at 1.5x or 3x blurs.
 ## Frame loop
 
 ```odin
-ui_scale_init(&app.scale, 1, 2)
+ui_scale_init(&app.scale, 1)      // ui_scale = 1, dpi_scale = 1
 renderer_init(&app.renderer)
 ui.init(CALLBACKS, 65536, 8 * mem.Megabyte)
-app_init()               // pages load their fonts through Context
+app_init()                        // pages load their fonts through Context
 
 for !rl.WindowShouldClose() {
     handle_input()
 
     rl.BeginDrawing()
     rl.ClearBackground(window_bg)
-    ui_poll(app_draw)     // scale target + ui.frame/root scope + present
+    ui_poll(app_draw)             // matrix + ui.frame/root scope + pop
     rl.EndDrawing()
 }
 ```
 
 Order matters for teardown: `app_deinit` (pages) before `ui.deinit`, then the
-render target, then the renderer/window.
+renderer and the window. There is no render target to release.
 
 ## Screenshots
 
@@ -179,9 +210,12 @@ documents that its filename must not contain a path. Use
 
 `GetScreenWidth/Height` are window coordinates; `GetRenderWidth/Height` can be
 the physical framebuffer. Mouse positions are in window coordinates. Pick one
-destination space and be consistent. Setting `render_scale` to the DPI scale is
-a simple way to get a physical-resolution target while keeping screen-coordinate
-layout.
+destination space and be consistent.
+
+With the modelview approach, `ppu = ui_scale` is enough when the framebuffer
+matches the window (the driver scales it). If the framebuffer is larger and you
+want to use the extra pixels, set `dpi_scale = render / screen` and keep dividing
+the mouse by `ppu`.
 
 ## Run the starter
 
@@ -208,5 +242,5 @@ odin run src -collection:ui=ui/ui
 Headless check:
 
 ```sh
-odin run src -collection:ui=ui/ui -- --screenshot out.png --view 2 --scale 1.5 --ssaa 3
+odin run src -collection:ui=ui/ui -- --screenshot out.png --view 2 --scale 1.5
 ```

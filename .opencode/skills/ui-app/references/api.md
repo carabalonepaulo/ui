@@ -116,6 +116,15 @@ fill_rect(color: Color)              // from {0,0} to available size
 These call the backend immediately. They use `to_screen_pos`, so the backend
 receives logical screen coordinates (scope position - scroll offset).
 
+A component that calls the backend directly has to apply the same offset
+itself; there is no other conversion to do (see `references/scaling.md` for the
+scale):
+
+```odin
+origin := ui.get_screen_pos()          // logical, includes scroll offsets
+rl.DrawCircleV({f32(origin.x + 40), f32(origin.y + 40)}, 20, color)
+```
+
 ## Measuring (`ui/scope.odin`, `ui/text.odin`)
 
 ```odin
@@ -336,10 +345,10 @@ Page :: enum { Dashboard, Typography, Scaling }
 Scale_Info :: struct {
     window_size:     [2]int,
     logical_size:    Vec2,
-    target_size:     [2]int,
     ui_scale:        f64,
-    render_scale:    f64,
     pixels_per_unit: f64,
+    snap:            bool,
+    atlas_size:      [2]int,   // the only UI-owned texture left
 }
 
 Context :: struct {

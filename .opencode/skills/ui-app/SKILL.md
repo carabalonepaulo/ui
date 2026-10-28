@@ -24,7 +24,7 @@ implementation, not a requirement.
 | `ui-demo/src/app.odin` | Starter: shell, page registry, lifecycle, context. |
 | `ui-demo/src/pages/` | Starter: page framework and page implementations. |
 | `ui-demo/src/kit/` | Starter: colors, text helpers, buttons. |
-| `ui-demo/src/scale.odin` | Starter: render-to-texture + supersampled scaling. |
+| `ui-demo/src/scale.odin` | Starter: rlgl modelview scale + physical-pixel callbacks. |
 | `ui-demo/src/renderer.odin` | Starter: fontstash atlas, font registry, text. |
 
 Paths such as `ui/`, `test/`, and `src/` are relative to the app or clone root,
@@ -186,7 +186,8 @@ for app_running() {
 
 Keep `ui.frame()` and the root `ui.scope()` in the same block: their deferred
 ends run in reverse order at the end of that block. The starter, for example,
-wraps them inside `BeginTextureMode`/`EndTextureMode`.
+wraps them inside an rlgl matrix push/pop (`BeginTextureMode`/`EndTextureMode`
+would work the same way if the pass rendered into a target).
 
 The backend callbacks actually used today are: `get_mouse_pos`,
 `get_mouse_wheel`, `is_mouse_pressed(.Left)`, `is_mouse_released(.Left)`,
@@ -395,11 +396,18 @@ outlive the frame and must not contain dangling `any` temporaries.
 
 ## Scaling
 
-Scaling is a backend concern. The recommended shape is: render the UI into an
-offscreen target larger than the destination, transform logical coordinates to
-physical pixels in the callbacks, rasterize text at the physical size, then
-downsample the target to the window. `references/scaling.md` derives the math,
-covers filtering and mipmaps, and discusses high-DPI and cost.
+Scaling is a backend concern. The recommended shape is one rlgl modelview scale
+for the whole UI pass: `ppu = ui_scale * dpi_scale`, `logical_size = window /
+ppu`, push the matrix before `ui.frame()`, pop it after the last deferred draw.
+Every `rl.Draw*` inside becomes physical pixels, including calls a component
+makes directly, and no offscreen target is allocated.
+
+Three things are not geometry and need explicit handling: the mouse position
+(divide by `ppu`), the scissor rect (`glScissor` is in framebuffer pixels), and
+text (disable the matrix and rasterize at `size * ppu`, otherwise glyphs blur).
+`references/scaling.md` derives the math and covers pixel snapping, high-DPI,
+cost, and when an offscreen target is still the right tool (supersampling, a
+fixed virtual resolution, a 2D/3D viewport).
 
 The library itself only ever sees logical units. Do not add a camera or a scale
 factor inside the library.
