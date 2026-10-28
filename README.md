@@ -15,7 +15,9 @@ A small, backend-agnostic immediate-mode UI library for Odin.
 
 ```text
 ui/          the library package
+ui/headless/ deterministic backend for tests
 test/        scratch test application
+tests/       library unit tests
 .opencode/   the ui-app agent skill
 LICENSE
 ```
@@ -114,6 +116,20 @@ for app_running() {
 
 See the `src/` directory in the starter repository for a complete
 raylib/fontstash backend and the UI patterns.
+
+## Tests
+
+`ui/headless` is a backend that draws nothing: it records every rect, text, and
+scissor call, measures text with fixed monospace metrics, and takes input from
+fields you set. Layout and hit-testing can be asserted without a window, a GPU,
+or font files. `tests/` uses it.
+
+```sh
+odin test tests -collection:ui=ui -define:ODIN_TEST_THREADS=1
+```
+
+`ui` keeps its context and store in package globals, so the test runner must use
+one thread.
 
 ## Agent skill
 

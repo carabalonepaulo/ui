@@ -137,9 +137,13 @@ measure_text(uid: Id, container_size: Vec2, text: string, opts: ^Text_Options,
 measure :: proc { measure_fixed, measure_dynamic, measure_text, measure_padding }
 ```
 
-`container_size.x == AUTO` disables width clamping. `opts.wrap == .None` returns
-the unclamped text size. The layout cache is keyed by `uid + text + font + size +
-spacing + line_spacing + container.x`.
+`container_size.x == AUTO` disables wrapping and returns the unclamped single-line
+size. `opts.wrap == .None` does the same. The layout cache is keyed by `uid + text
++ font + size + spacing + line_spacing + wrap + container.x`.
+
+`padding` is added to the returned size; the wrap width stays
+`container_size.x`. The intended use is to measure the full box once, then create
+a scope of exactly that size for the content (with or without padding).
 
 ## Text (`ui/text.odin`)
 
@@ -166,6 +170,16 @@ text(uid: Id, size: Vec2, text: string, opts: Text_Options, flags: Scope_Flags =
 * Fast path: if the measured text fits (or `wrap == .None`), draws once.
 * Wrapped path: tokenizes on spaces (`.Word`) or runes (`.Letter`), wraps when
   the next token does not fit, and draws each token.
+* The wrapped layout preserves the source: a run of spaces keeps its width, and
+  whitespace at a line break is not drawn and does not count toward the measured
+  width. `measure_text` returns the ink width of the widest line, so centering
+  and right-aligning with it is exact.
+* A word wider than the container is never split. It overflows its scope and the
+  reported width is clamped to the container; `.Clip` is what removes the visual
+  overflow.
+* Horizontal scroll only has an effect when the text does not wrap: with
+  `.Word`/`.Letter` the content width is clamped to the container by design, and
+  `size.x == AUTO` disables X scroll.
 * `scroll` binds `get(id(uid, 'x'/'y'), f64)` on the text scope.
 * Newlines are not special in this repository's tokenizer; split paragraphs
   manually or extend the tokenizer.

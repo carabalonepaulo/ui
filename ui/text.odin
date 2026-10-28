@@ -5,8 +5,24 @@ import "core:unicode/utf8"
 @(private = "file")
 Cached_Token :: struct {
 	start, end: int,
+	// Ink size of the token: the measured word (`.Word`) or rune (`.Letter`).
 	size:       Vec2,
-	step:       f64,
+	// Horizontal gap before this token: the spaces that precede a word, or the
+	// letter spacing between two runes. A wrapped token drops its gap, so a line
+	// never starts with whitespace and line widths never include trailing
+	// whitespace.
+	lead:       f64,
+}
+
+@(private = "file")
+Token_Cache :: struct {
+	tokens: [dynamic]Cached_Token,
+	valid:  bool,
+}
+
+@(private = "file")
+destroy_token_cache :: proc(cache: ^Token_Cache) {
+	delete(cache.tokens)
 }
 
 Text_Wrap :: enum {
@@ -74,58 +90,74 @@ text :: proc(uid: Id, size: Vec2, text: string, opts: Text_Options, flags: Scope
 	text_id := get_text_id(uid, text, &opts)
 	text_size := get_text_size(text_id, text, &opts)
 
-	if (text_size.x <= container_size.x && text_size.y <= container_size.y) || opts.wrap == .None {
+	if fits(text_size, container_size) || opts.wrap == .None {
+		// Keep the token cache alive across frames that take the fast path, so an
+		// animating width does not rebuild it every other frame.
+		if opts.wrap != .None do touch_token_cache(text_id, opts.wrap)
+
 		draw_text(opts.font, text, {}, opts.font_size, opts.letter_spacing, opts.font_color)
 		container.content_size = text_size
 		return
 	}
 
-	available := container_size.x
-	max_width: f64 = 0
+	tokens := get_token_cache(text_id, text, &opts)
+	container.content_size = run_layout(tokens, text, container_size, &opts, draw = true)
+}
 
-	tokens := get_token_cache(id(text_id, "cache"), text, &opts)
+// Lays the tokens out and returns the content size. With `draw`, every token is
+// emitted at its final position in the current scope. `measure_text` runs the
+// same loop without drawing, so measuring and drawing cannot disagree.
+@(private = "file")
+run_layout :: proc(
+	tokens: []Cached_Token,
+	text: string,
+	container_size: Vec2,
+	opts: ^Text_Options,
+	draw: bool,
+) -> Vec2 {
+	x, y: f64
+	available := container_size.x
+	max_width: f64
+	line_height := opts.font_size + opts.line_spacing
+
 	for i in 0 ..< len(tokens) {
-		token := text[tokens[i].start:tokens[i].end]
-		token_size := tokens[i].size
-		step := tokens[i].step
-		draw(container, &available, &max_width, token, token_size, step, &opts)
+		token := tokens[i]
+
+		if x > 0 && available - token.lead - token.size.x < 0 {
+			max_width = max(max_width, x)
+			x = 0
+			y += line_height
+			available = container_size.x
+		} else {
+			x += token.lead
+			available -= token.lead
+		}
+
+		if draw {
+			draw_text(
+				opts.font,
+				text[token.start:token.end],
+				{x, y},
+				opts.font_size,
+				opts.letter_spacing,
+				opts.font_color,
+			)
+		}
+
+		x += token.size.x
+		available -= token.size.x
+		max_width = max(max_width, x)
 	}
 
-	// The last line never wraps, so make sure its width is considered too.
-	if container.cursor.x > max_width do max_width = container.cursor.x
+	width := max_width
+	if container_size.x != AUTO do width = clamp(width, 0, container_size.x)
 
-	final_width := size.x != AUTO ? clamp(max_width, 0, container.size.x) : max_width
-	container.content_size = {final_width, container.cursor.y + opts.font_size}
+	return {width, y + opts.font_size}
 }
 
 @(private = "file")
-draw :: proc(
-	container: ^Scope,
-	available: ^f64,
-	max_width: ^f64,
-	text: string,
-	text_size: Vec2,
-	step: f64,
-	opts: ^Text_Options,
-) {
-	if container.cursor.x > 0 && available^ - text_size.x < 0 {
-		if container.cursor.x > max_width^ do max_width^ = container.cursor.x
-		container.cursor.y += opts.font_size + opts.line_spacing
-		container.cursor.x = 0
-		available^ = container.size.x
-	}
-
-	draw_text(
-		opts.font,
-		text,
-		container.cursor,
-		opts.font_size,
-		opts.letter_spacing,
-		opts.font_color,
-	)
-
-	container.cursor.x += step
-	available^ -= step
+fits :: proc(text_size, container_size: Vec2) -> bool {
+	return text_size.x <= container_size.x && text_size.y <= container_size.y
 }
 
 @(private = "file")
@@ -143,84 +175,98 @@ get_text_size :: proc(uid: Id, text: string, opts: ^Text_Options) -> Vec2 {
 }
 
 @(private = "file")
-get_token_cache :: proc(uid: Id, text: string, opts: ^Text_Options) -> []Cached_Token {
-	destroy_cache := proc(cache: ^[dynamic]Cached_Token) {delete(cache^)}
-	cache, just_created := get(uid, [dynamic]Cached_Token, destroy = destroy_cache)
+get_token_cache :: proc(text_id: Id, text: string, opts: ^Text_Options) -> []Cached_Token {
+	cache := get(
+		id(text_id, opts.wrap, "cache"),
+		Token_Cache,
+		destroy = destroy_token_cache,
+	)
 
-	if just_created {
-		space_size := ctx.callbacks.measure_text(
-			opts.font,
-			" ",
-			opts.font_size,
-			opts.letter_spacing,
-		)
+	if !cache.valid {
+		build_tokens(cache, text, opts)
+		cache.valid = true
+	}
 
-		sizes := make([dynamic]Cached_Token)
-		idx := 0
-		start := 0
+	return cache.tokens[:]
+}
 
-		if opts.wrap == .Word {
-			for idx < len(text) {
-				rune, rune_size := utf8.decode_rune(text[idx:])
-				idx += rune_size
+// Marks the token cache as used without building it, so the store does not evict
+// it on frames where the text fits and the fast path draws it in one call.
+@(private = "file")
+touch_token_cache :: proc(text_id: Id, wrap: Text_Wrap) {
+	_ = get(id(text_id, wrap, "cache"), Token_Cache, destroy = destroy_token_cache)
+}
 
-				if rune == ' ' {
-					end := idx - rune_size
-					if start < end {
-						word_size := ctx.callbacks.measure_text(
-							opts.font,
-							text[start:end],
-							opts.font_size,
-							opts.letter_spacing,
-						)
-						cached := Cached_Token{start, end, word_size, word_size.x + space_size.x}
-						append(&sizes, cached)
-					}
-					start = idx
+@(private = "file")
+build_tokens :: proc(cache: ^Token_Cache, text: string, opts: ^Text_Options) {
+	space_size := ctx.callbacks.measure_text(
+		opts.font,
+		" ",
+		opts.font_size,
+		opts.letter_spacing,
+	)
+
+	idx := 0
+	start := 0
+	lead: f64
+
+	if opts.wrap == .Word {
+		// Words are tokens; the spaces before a word become its `lead`. That keeps
+		// runs of spaces intact and leaves trailing whitespace out of the line
+		// width, because a wrapped token drops its lead.
+		for idx < len(text) {
+			rune, rune_size := utf8.decode_rune(text[idx:])
+			idx += rune_size
+
+			if rune == ' ' {
+				end := idx - rune_size
+				if start < end {
+					word_size := ctx.callbacks.measure_text(
+						opts.font,
+						text[start:end],
+						opts.font_size,
+						opts.letter_spacing,
+					)
+					append(&cache.tokens, Cached_Token{start, end, word_size, lead})
+					lead = space_size.x
+				} else {
+					lead += space_size.x
 				}
+				start = idx
 			}
+		}
 
-			if start < idx {
-				word_size := ctx.callbacks.measure_text(
+		if start < idx {
+			word_size := ctx.callbacks.measure_text(
+				opts.font,
+				text[start:idx],
+				opts.font_size,
+				opts.letter_spacing,
+			)
+			append(&cache.tokens, Cached_Token{start, idx, word_size, lead})
+		}
+	} else {
+		// One token per rune. `letter_spacing` is the gap before the next rune, so
+		// it behaves like a lead and disappears at a line break.
+		for idx < len(text) {
+			rune, rune_size := utf8.decode_rune(text[idx:])
+			start = idx
+			idx += rune_size
+
+			size := space_size
+			if rune != ' ' {
+				size = ctx.callbacks.measure_text(
 					opts.font,
 					text[start:idx],
 					opts.font_size,
 					opts.letter_spacing,
 				)
-				cached := Cached_Token{start, idx, word_size, word_size.x}
-				append(&sizes, cached)
 			}
-		} else {
-			for idx < len(text) {
-				rune, rune_size := utf8.decode_rune(text[idx:])
-				start = idx
-				idx += rune_size
 
-				letter := text[start:idx]
-				token := Cached_Token {
-					start = start,
-					end   = idx,
-				}
-
-				if rune == ' ' {
-					token.size = space_size
-				} else {
-					token.size = ctx.callbacks.measure_text(
-						opts.font,
-						letter,
-						opts.font_size,
-						opts.letter_spacing,
-					)
-				}
-				token.step = token.size.x + opts.letter_spacing
-
-				append(&sizes, token)
-			}
+			append(&cache.tokens, Cached_Token{start, idx, size, lead})
+			lead = opts.letter_spacing
 		}
-		cache^ = sizes
 	}
-
-	return cache^[:]
 }
 
 get_text_id :: #force_inline proc(uid: Id, text: string, opts: ^Text_Options) -> Id {
@@ -237,43 +283,26 @@ measure_text :: proc(
 	text_id := get_text_id(uid, text, opts)
 	text_size := get_text_size(text_id, text, opts)
 
-	if (text_size.x <= container_size.x && text_size.y <= container_size.y) || opts.wrap == .None {
+	// `AUTO` disables wrapping, like in `text`. A width of -1 cannot lay anything
+	// out, so the unclamped single-line size is the only useful answer.
+	if container_size.x == AUTO || opts.wrap == .None || fits(text_size, container_size) {
+		if container_size.x != AUTO && opts.wrap != .None do touch_token_cache(text_id, opts.wrap)
+
 		return {
 			text_size.x + padding.left + padding.right,
 			text_size.y + padding.top + padding.bottom,
 		}
 	}
 
-	layout_size_id := id(text_id, container_size.x, "layout_size")
+	layout_size_id := id(text_id, opts.wrap, container_size.x, "layout_size")
 	layout_size, just_created := get(layout_size_id, Vec2)
 	if just_created {
-		available := container_size.x
-		max_width: f64 = 0
-		cursor: Vec2 = {}
-
-		tokens := get_token_cache(id(text_id, "cache"), text, opts)
-		for i in 0 ..< len(tokens) {
-			token_size := tokens[i].size
-			step := tokens[i].step
-
-			if cursor.x > 0 && available - token_size.x < 0 {
-				if cursor.x > max_width do max_width = cursor.x
-				cursor.y += opts.font_size + opts.line_spacing
-				cursor.x = 0
-				available = container_size.x
-			}
-
-			cursor.x += step
-			available -= step
-		}
-
-		if cursor.x > max_width do max_width = cursor.x
-
-		final_width := container_size.x != AUTO ? clamp(max_width, 0, container_size.x) : max_width
-		layout_size^ = {final_width, cursor.y + opts.font_size}
+		tokens := get_token_cache(text_id, text, opts)
+		layout_size^ = run_layout(tokens, text, container_size, opts, draw = false)
 	}
 
-	size := layout_size^
-	return {size.x + padding.left + padding.right, size.y + padding.top + padding.bottom}
+	return {
+		layout_size.x + padding.left + padding.right,
+		layout_size.y + padding.top + padding.bottom,
+	}
 }
-

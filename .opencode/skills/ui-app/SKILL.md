@@ -18,7 +18,9 @@ implementation, not a requirement.
 | Path | Purpose |
 | --- | --- |
 | `ui/` | The library package. Import as `ui:.` through a collection. |
+| `ui/headless/` | Deterministic backend for tests. No window, no GPU. |
 | `test/` | Scratch test app shipped with the library. |
+| `tests/` | Library unit tests, run with `odin test`. |
 | `.opencode/skills/ui-app` | This skill. |
 | `ui-demo/src/main.odin` | Starter: backend callbacks and frame loop. |
 | `ui-demo/src/app.odin` | Starter: shell, page registry, lifecycle, context. |
@@ -36,6 +38,7 @@ Reference files:
 * `references/patterns.md` - layout, widgets, store, pages.
 * `references/scaling.md` - backend-neutral scaling technique.
 * `references/backends/raylib.md` - the included raylib + fontstash backend.
+* `references/testing.md` - the headless backend and how to write tests.
 * `references/pitfalls.md` - library-level traps and fixes.
 
 ## Set up a new app (outside this repo)
@@ -271,8 +274,8 @@ starter's `--view` screenshot argument.
 7. **Clip is also hit-testing.** `Clip` limits drawing and hit-testing;
    overflow-visible hit areas are not supported.
 8. **Measure text; do not guess.** Use `ui.measure_text` with exactly the same
-   `Text_Options` used to draw. The cache key includes text, font, size,
-   spacing, and line spacing.
+   `Text_Options` used to draw. The layout cache key includes text, font, size,
+   spacing, line spacing, wrap mode, and the container width.
 9. **Backend text must match the physical size.** Rasterize at
    `font_size * pixels_per_unit` or keep an atlas at that size. See
    `references/scaling.md`.
@@ -394,6 +397,25 @@ outlive the frame and must not contain dangling `any` temporaries.
 * Run `odin build` before `odin check -vet`; the library currently triggers
   shadow/unused warnings under `-vet` but compiles cleanly.
 
+## Testing
+
+`ui/headless` is a backend that draws nothing: it records rect/text/scissor
+calls, measures text with fixed monospace metrics, and takes input from fields
+you set. Use it to assert layout and hit-testing without a window or a GPU.
+
+```odin
+b: hl.Backend
+if !hl.init(&b) do testing.fail_now(t, "headless init failed")
+defer hl.deinit(&b)
+
+hl.begin(&b, {400, 400})
+size := ui.measure_text(ui.id("m"), {100, 100}, "aaa bbb", &opts)
+hl.end(&b)
+```
+
+`ui` uses package globals, so run the test runner with one thread
+(`-define:ODIN_TEST_THREADS=1`). See `references/testing.md`.
+
 ## Scaling
 
 Scaling is a backend concern. The recommended shape is one rlgl modelview scale
@@ -420,7 +442,11 @@ See `references/pitfalls.md` for details.
 * `fit`/`center` use the previous frame's content size and converge one frame
   late.
 * `Clip` is the hit-test rectangle; overflow-visible interaction is impossible.
-* The tokenizer does not handle `\n`.
+* The tokenizer treats only ASCII space as a break: `\n`, tabs, and NBSP stay
+  inside a word. Runs of spaces are preserved by the wrapped layout.
+* A word wider than the container is never split; it overflows the scope and the
+  reported width is clamped to the container.
+* Horizontal text scroll only has an effect when the text does not wrap.
 * `.Letter` wrapping and single-line/exact-fit widths were fixed in
   `ui/text.odin` in this repository; older copies may still have the bugs.
 * Store entries are frame-scoped; do not hold their pointers across frames.

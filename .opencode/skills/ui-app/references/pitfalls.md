@@ -73,8 +73,9 @@ when rows leave the viewport.
 
 ### Text tokenizer
 
-The tokenizer splits on spaces (`.Word`) or runes (`.Letter`). It does not treat
-`\n` as a line break. Split paragraphs into separate `text` calls if needed.
+`.Word` splits on ASCII space and `.Letter` splits on runes; runs of spaces are
+tokens and keep their width. Other whitespace is not a break: `\n` is not a line
+break, so split paragraphs into separate `text` calls.
 
 ### Backend measure quirks
 
