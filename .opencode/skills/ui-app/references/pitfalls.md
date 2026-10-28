@@ -73,9 +73,10 @@ when rows leave the viewport.
 
 ### Text tokenizer
 
-`.Word` splits on ASCII space and `.Letter` splits on runes; runs of spaces are
-tokens and keep their width. Other whitespace is not a break: `\n` is not a line
-break, so split paragraphs into separate `text` calls.
+`.Word` splits on ASCII space and tab, `.Letter` splits on runes, and runs of
+spaces keep their width. `\n` and `\r\n` are hard breaks; `\t` advances
+`opts.tab_spaces` spaces (4 by default). Other whitespace, such as NBSP, is not a
+break.
 
 ### Backend measure quirks
 

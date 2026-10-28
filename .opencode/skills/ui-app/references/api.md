@@ -137,9 +137,10 @@ measure_text(uid: Id, container_size: Vec2, text: string, opts: ^Text_Options,
 measure :: proc { measure_fixed, measure_dynamic, measure_text, measure_padding }
 ```
 
-`container_size.x == AUTO` disables wrapping and returns the unclamped single-line
-size. `opts.wrap == .None` does the same. The layout cache is keyed by `uid + text
-+ font + size + spacing + line_spacing + wrap + container.x`.
+`container_size.x == AUTO` disables automatic wrapping (explicit `\n` breaks still
+apply) and returns the unclamped width. `opts.wrap == .None` does the same. The
+layout cache is keyed by `uid + text + font + size + spacing + line_spacing +
+tab_spaces + wrap + container.x`.
 
 `padding` is added to the returned size; the wrap width stays
 `container_size.x`. The intended use is to measure the full box once, then create
@@ -159,6 +160,7 @@ Text_Options :: struct {
     font_size: f64,
     font_color: Color,
     scroll: Text_Sroll,
+    tab_spaces: int,        // 0 means 4
 }
 
 text(uid: Id, size: Vec2, text: string, opts: Text_Options, flags: Scope_Flags = {})
@@ -167,9 +169,18 @@ text(uid: Id, size: Vec2, text: string, opts: Text_Options, flags: Scope_Flags =
 * `size.x == AUTO`: disables wrap and horizontal scroll.
 * `size.y == AUTO`: disables vertical scroll.
 * Both `AUTO`: behaves as a fit scope with height `font_size`.
-* Fast path: if the measured text fits (or `wrap == .None`), draws once.
-* Wrapped path: tokenizes on spaces (`.Word`) or runes (`.Letter`), wraps when
-  the next token does not fit, and draws each token.
+* Fast path: if the measured text fits (or `wrap == .None`) and the text has no
+  `\n`, `\r`, or `\t`, draws once with a single backend call.
+* Wrapped path: tokenizes on spaces (`.Word`), runes (`.Letter`), tabs, and line
+  breaks, wraps when the next token does not fit, and draws each token.
+* `\n` and `\r\n` are hard line breaks: they advance one line and are never
+  drawn. A trailing break keeps the empty last line, and indentation after a
+  break is preserved. `AUTO` width and `wrap == .None` disable automatic
+  wrapping, not explicit breaks.
+* `\t` advances `opts.tab_spaces` spaces (zero means 4) and separates words in
+  `.Word`.
+* A text containing `\n`/`\r`/`\t` always uses the token layout; the fast path is
+  skipped because one backend call cannot break lines or expand a tab.
 * The wrapped layout preserves the source: a run of spaces keeps its width, and
   whitespace at a line break is not drawn and does not count toward the measured
   width. `measure_text` returns the ink width of the widest line, so centering
@@ -181,8 +192,6 @@ text(uid: Id, size: Vec2, text: string, opts: Text_Options, flags: Scope_Flags =
   `.Word`/`.Letter` the content width is clamped to the container by design, and
   `size.x == AUTO` disables X scroll.
 * `scroll` binds `get(id(uid, 'x'/'y'), f64)` on the text scope.
-* Newlines are not special in this repository's tokenizer; split paragraphs
-  manually or extend the tokenizer.
 
 ## Layout
 

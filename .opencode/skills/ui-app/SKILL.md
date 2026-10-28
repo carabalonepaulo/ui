@@ -323,6 +323,7 @@ opts := ui.Text_Options {
     scroll         = .Y,      // only inside a fixed-size clipped scope
     letter_spacing = 0,
     line_spacing   = 4,
+    tab_spaces     = 0,       // 0 means 4
 }
 
 size := ui.measure_text(ui.id("label"), {ui.AUTO, ui.AUTO}, "Save", &opts)
@@ -330,10 +331,14 @@ ui.scope_at({x, y}, size)
 ui.text(ui.id("label"), size, "Save", opts)
 ```
 
-`text` has a fast path when the measured text fits (or `wrap == .None`). The
-wrapped path tokenizes on spaces (`.Word`) or runes (`.Letter`). The current
-tokenizer does not treat `\n` as a line break; use separate text calls for
-paragraphs.
+`text` has a fast path when the measured text fits (or `wrap == .None`) and the
+text has no `\n`, `\r`, or `\t`; one backend call draws it. Otherwise it
+tokenizes on spaces (`.Word`), runes (`.Letter`), tabs, and hard breaks.
+
+`\n` and `\r\n` are hard breaks: they advance one line and are never drawn. A
+trailing break keeps the empty last line, and indentation after a break is
+preserved. `AUTO` width and `wrap == .None` disable automatic wrapping, not
+explicit breaks. `\t` advances `tab_spaces` spaces (4 by default).
 
 `opts.scroll` binds the text's own scroll offset. Do not also bind
 `.Scroll_Y` on the same scope.
@@ -442,8 +447,8 @@ See `references/pitfalls.md` for details.
 * `fit`/`center` use the previous frame's content size and converge one frame
   late.
 * `Clip` is the hit-test rectangle; overflow-visible interaction is impossible.
-* The tokenizer treats only ASCII space as a break: `\n`, tabs, and NBSP stay
-  inside a word. Runs of spaces are preserved by the wrapped layout.
+* `\n` and `\r\n` are hard breaks and `\t` expands to `tab_spaces` spaces (4 by
+  default). Other whitespace, such as NBSP, does not break words.
 * A word wider than the container is never split; it overflows the scope and the
   reported width is clamped to the container.
 * Horizontal text scroll only has an effect when the text does not wrap.

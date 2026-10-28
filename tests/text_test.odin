@@ -237,6 +237,261 @@ overlong_word_is_clamped_to_the_container :: proc(t: ^testing.T) {
 }
 
 @(test)
+newline_is_a_hard_break :: proc(t: ^testing.T) {
+	b: hl.Backend
+	if !hl.init(&b) do testing.fail_now(t, "headless init failed")
+	defer hl.deinit(&b)
+
+	opts := text_opts(.Word)
+	size: ui.Vec2
+
+	hl.begin(&b, {400, 400})
+	size = ui.measure_text(ui.id("m"), {200, 100}, "aaa\nbbb", &opts)
+	hl.end(&b)
+
+	hl.begin(&b, {400, 400})
+	{
+		ui.scope({200, 100})
+		ui.text(ui.id("m"), {200, 100}, "aaa\nbbb", opts)
+	}
+	hl.end(&b)
+
+	testing.expect_value(t, size, ui.Vec2{30, 20})
+
+	texts := texts_of(&b)
+	defer delete(texts)
+
+	testing.expect_value(t, len(texts), 2)
+	if len(texts) == 2 {
+		testing.expect_value(t, texts[0].pos, ui.Vec2{0, 0})
+		testing.expect_value(t, texts[1].pos, ui.Vec2{0, 10})
+	}
+}
+
+@(test)
+newline_works_without_wrap :: proc(t: ^testing.T) {
+	b: hl.Backend
+	if !hl.init(&b) do testing.fail_now(t, "headless init failed")
+	defer hl.deinit(&b)
+
+	opts := text_opts(.None)
+	size: ui.Vec2
+
+	hl.begin(&b, {400, 400})
+	{
+		ui.scope({20, 100})
+		size = ui.measure_text(ui.id("m"), {20, 100}, "aaa\nbbb", &opts)
+		ui.text(ui.id("m"), {20, 100}, "aaa\nbbb", opts)
+	}
+	hl.end(&b)
+
+	// No automatic wrapping, but the explicit break still applies and the width is
+	// not clamped.
+	testing.expect_value(t, size, ui.Vec2{30, 20})
+
+	texts := texts_of(&b)
+	defer delete(texts)
+	testing.expect_value(t, len(texts), 2)
+}
+
+@(test)
+newline_in_letter_mode :: proc(t: ^testing.T) {
+	b: hl.Backend
+	if !hl.init(&b) do testing.fail_now(t, "headless init failed")
+	defer hl.deinit(&b)
+
+	opts := text_opts(.Letter)
+
+	hl.begin(&b, {400, 400})
+	{
+		ui.scope({200, 100})
+		ui.text(ui.id("m"), {200, 100}, "ab\ncd", opts)
+	}
+	hl.end(&b)
+
+	texts := texts_of(&b)
+	defer delete(texts)
+
+	testing.expect_value(t, len(texts), 4)
+	if len(texts) != 4 do return
+
+	testing.expect_value(t, texts[0].pos, ui.Vec2{0, 0})
+	testing.expect_value(t, texts[1].pos, ui.Vec2{10, 0})
+	testing.expect_value(t, texts[2].pos, ui.Vec2{0, 10})
+	testing.expect_value(t, texts[3].pos, ui.Vec2{10, 10})
+}
+
+@(test)
+trailing_newline_keeps_an_empty_line :: proc(t: ^testing.T) {
+	b: hl.Backend
+	if !hl.init(&b) do testing.fail_now(t, "headless init failed")
+	defer hl.deinit(&b)
+
+	opts := text_opts(.Word)
+	size: ui.Vec2
+
+	hl.begin(&b, {400, 400})
+	size = ui.measure_text(ui.id("m"), {200, 100}, "aaa\n", &opts)
+	hl.end(&b)
+
+	// The source ends with a line break, so the layout keeps the empty last line.
+	testing.expect_value(t, size, ui.Vec2{30, 20})
+}
+
+@(test)
+blank_line_between_breaks :: proc(t: ^testing.T) {
+	b: hl.Backend
+	if !hl.init(&b) do testing.fail_now(t, "headless init failed")
+	defer hl.deinit(&b)
+
+	opts := text_opts(.Word)
+	size: ui.Vec2
+
+	hl.begin(&b, {400, 400})
+	{
+		ui.scope({200, 100})
+		size = ui.measure_text(ui.id("m"), {200, 100}, "a\n\nb", &opts)
+		ui.text(ui.id("m"), {200, 100}, "a\n\nb", opts)
+	}
+	hl.end(&b)
+
+	testing.expect_value(t, size, ui.Vec2{10, 30})
+
+	texts := texts_of(&b)
+	defer delete(texts)
+
+	testing.expect_value(t, len(texts), 2)
+	if len(texts) == 2 {
+		testing.expect_value(t, texts[0].pos, ui.Vec2{0, 0})
+		testing.expect_value(t, texts[1].pos, ui.Vec2{0, 20})
+	}
+}
+
+@(test)
+indentation_after_a_break_is_preserved :: proc(t: ^testing.T) {
+	b: hl.Backend
+	if !hl.init(&b) do testing.fail_now(t, "headless init failed")
+	defer hl.deinit(&b)
+
+	opts := text_opts(.Word)
+
+	hl.begin(&b, {400, 400})
+	{
+		ui.scope({200, 100})
+		ui.text(ui.id("m"), {200, 100}, "a\n b", opts)
+	}
+	hl.end(&b)
+
+	texts := texts_of(&b)
+	defer delete(texts)
+
+	testing.expect_value(t, len(texts), 2)
+	if len(texts) == 2 {
+		// "a" then " b": the space after the break indents the second line.
+		testing.expect_value(t, texts[1].pos, ui.Vec2{10, 10})
+	}
+}
+
+@(test)
+tab_is_four_spaces :: proc(t: ^testing.T) {
+	b: hl.Backend
+	if !hl.init(&b) do testing.fail_now(t, "headless init failed")
+	defer hl.deinit(&b)
+
+	opts := text_opts(.Word)
+	size: ui.Vec2
+
+	hl.begin(&b, {400, 400})
+	{
+		ui.scope({200, 100})
+		size = ui.measure_text(ui.id("m"), {200, 100}, "a\tb", &opts)
+		ui.text(ui.id("m"), {200, 100}, "a\tb", opts)
+	}
+	hl.end(&b)
+
+	testing.expect_value(t, size, ui.Vec2{60, 10})
+
+	texts := texts_of(&b)
+	defer delete(texts)
+
+	testing.expect_value(t, len(texts), 2)
+	if len(texts) == 2 {
+		testing.expect_value(t, texts[1].text, "b")
+		testing.expect_value(t, texts[1].pos, ui.Vec2{50, 0})
+	}
+}
+
+@(test)
+tab_width_comes_from_the_options :: proc(t: ^testing.T) {
+	b: hl.Backend
+	if !hl.init(&b) do testing.fail_now(t, "headless init failed")
+	defer hl.deinit(&b)
+
+	opts := text_opts(.Word)
+	opts.tab_spaces = 2
+	size: ui.Vec2
+
+	hl.begin(&b, {400, 400})
+	{
+		ui.scope({200, 100})
+		size = ui.measure_text(ui.id("m"), {200, 100}, "a\tb", &opts)
+		ui.text(ui.id("m"), {200, 100}, "a\tb", opts)
+	}
+	hl.end(&b)
+
+	testing.expect_value(t, size, ui.Vec2{40, 10})
+
+	texts := texts_of(&b)
+	defer delete(texts)
+	if len(texts) == 2 {
+		testing.expect_value(t, texts[1].pos, ui.Vec2{30, 0})
+	}
+}
+
+@(test)
+crlf_is_one_break :: proc(t: ^testing.T) {
+	b: hl.Backend
+	if !hl.init(&b) do testing.fail_now(t, "headless init failed")
+	defer hl.deinit(&b)
+
+	opts := text_opts(.Word)
+	size: ui.Vec2
+
+	hl.begin(&b, {400, 400})
+	{
+		ui.scope({200, 100})
+		size = ui.measure_text(ui.id("m"), {200, 100}, "a\r\nb", &opts)
+		ui.text(ui.id("m"), {200, 100}, "a\r\nb", opts)
+	}
+	hl.end(&b)
+
+	testing.expect_value(t, size, ui.Vec2{10, 20})
+
+	texts := texts_of(&b)
+	defer delete(texts)
+	if len(texts) == 2 {
+		testing.expect_value(t, texts[1].pos, ui.Vec2{0, 10})
+	}
+}
+
+@(test)
+measure_newlines_with_auto :: proc(t: ^testing.T) {
+	b: hl.Backend
+	if !hl.init(&b) do testing.fail_now(t, "headless init failed")
+	defer hl.deinit(&b)
+
+	opts := text_opts(.None)
+	size: ui.Vec2
+
+	hl.begin(&b, {400, 400})
+	size = ui.measure_text(ui.id("m"), {ui.AUTO, ui.AUTO}, "aa\nbbb", &opts)
+	hl.end(&b)
+
+	// AUTO disables wrapping, not explicit breaks.
+	testing.expect_value(t, size, ui.Vec2{30, 20})
+}
+
+@(test)
 scroll_y_clamps_to_the_text_height :: proc(t: ^testing.T) {
 	b: hl.Backend
 	if !hl.init(&b) do testing.fail_now(t, "headless init failed")

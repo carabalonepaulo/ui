@@ -3,16 +3,29 @@ package ui
 import "core:unicode/utf8"
 
 @(private = "file")
+Token_Kind :: enum {
+	// A drawable token: a word (`.Word`) or a rune (`.Letter`).
+	Text,
+	// A hard line break (`\n` or `\r\n`). Draws nothing.
+	Break,
+}
+
+@(private = "file")
 Cached_Token :: struct {
+	kind:       Token_Kind,
 	start, end: int,
-	// Ink size of the token: the measured word (`.Word`) or rune (`.Letter`).
+	// Ink size of the token. Zero for a break.
 	size:       Vec2,
 	// Horizontal gap before this token: the spaces that precede a word, or the
 	// letter spacing between two runes. A wrapped token drops its gap, so a line
 	// never starts with whitespace and line widths never include trailing
-	// whitespace.
+	// whitespace. A hard break keeps the gap, which preserves indentation.
 	lead:       f64,
 }
+
+// A tab advances this many spaces. `Text_Options.tab_spaces` overrides it.
+@(private = "file")
+TAB_SPACES :: 4
 
 @(private = "file")
 Token_Cache :: struct {
@@ -46,6 +59,8 @@ Text_Options :: struct {
 	font_size:      f64,
 	font_color:     Color,
 	scroll:         Text_Sroll,
+	// Width of a tab in spaces. Zero (the zero value) means `TAB_SPACES`.
+	tab_spaces:     int,
 }
 
 text :: proc(uid: Id, size: Vec2, text: string, opts: Text_Options, flags: Scope_Flags = {}) {
@@ -90,7 +105,7 @@ text :: proc(uid: Id, size: Vec2, text: string, opts: Text_Options, flags: Scope
 	text_id := get_text_id(uid, text, &opts)
 	text_size := get_text_size(text_id, text, &opts)
 
-	if fits(text_size, container_size) || opts.wrap == .None {
+	if !needs_token_layout(text) && (fits(text_size, container_size) || opts.wrap == .None) {
 		// Keep the token cache alive across frames that take the fast path, so an
 		// animating width does not rebuild it every other frame.
 		if opts.wrap != .None do touch_token_cache(text_id, opts.wrap)
@@ -119,11 +134,18 @@ run_layout :: proc(
 	available := container_size.x
 	max_width: f64
 	line_height := opts.font_size + opts.line_spacing
+	wrap := opts.wrap != .None
 
-	for i in 0 ..< len(tokens) {
-		token := tokens[i]
+	for token in tokens {
+		if token.kind == .Break {
+			max_width = max(max_width, x)
+			x = 0
+			y += line_height
+			available = container_size.x
+			continue
+		}
 
-		if x > 0 && available - token.lead - token.size.x < 0 {
+		if wrap && x > 0 && available - token.lead - token.size.x < 0 {
 			max_width = max(max_width, x)
 			x = 0
 			y += line_height
@@ -150,9 +172,22 @@ run_layout :: proc(
 	}
 
 	width := max_width
-	if container_size.x != AUTO do width = clamp(width, 0, container_size.x)
+	if wrap && container_size.x != AUTO do width = clamp(width, 0, container_size.x)
 
 	return {width, y + opts.font_size}
+}
+
+// True when the text cannot be drawn with a single backend call: a hard break
+// needs a new line, and a tab needs the expanded advance.
+@(private = "file")
+needs_token_layout :: proc(text: string) -> bool {
+	for i in 0 ..< len(text) {
+		switch text[i] {
+		case '\n', '\r', '\t':
+			return true
+		}
+	}
+	return false
 }
 
 @(private = "file")
@@ -206,52 +241,80 @@ build_tokens :: proc(cache: ^Token_Cache, text: string, opts: ^Text_Options) {
 		opts.letter_spacing,
 	)
 
+	spaces_per_tab := opts.tab_spaces > 0 ? opts.tab_spaces : TAB_SPACES
+	tab_width := f64(spaces_per_tab) * space_size.x
+
 	idx := 0
-	start := 0
+	word_start := 0
 	lead: f64
 
-	if opts.wrap == .Word {
+	if opts.wrap != .Letter {
 		// Words are tokens; the spaces before a word become its `lead`. That keeps
 		// runs of spaces intact and leaves trailing whitespace out of the line
-		// width, because a wrapped token drops its lead.
+		// width, because a wrapped token drops its lead. A hard break keeps it, so
+		// indentation after `\n` survives. `.None` uses the same tokenizer; only
+		// the automatic wrap is disabled.
 		for idx < len(text) {
 			rune, rune_size := utf8.decode_rune(text[idx:])
-			idx += rune_size
 
-			if rune == ' ' {
-				end := idx - rune_size
-				if start < end {
-					word_size := ctx.callbacks.measure_text(
-						opts.font,
-						text[start:end],
-						opts.font_size,
-						opts.letter_spacing,
-					)
-					append(&cache.tokens, Cached_Token{start, end, word_size, lead})
-					lead = space_size.x
-				} else {
-					lead += space_size.x
+			if rune == ' ' || rune == '\t' {
+				if word_start < idx {
+					append_word(cache, text, word_start, idx, lead, opts)
+					lead = 0
 				}
-				start = idx
+
+				lead += rune == '\t' ? tab_width : space_size.x
+				idx += rune_size
+				word_start = idx
+				continue
 			}
+
+			if rune == '\n' || rune == '\r' {
+				if word_start < idx {
+					append_word(cache, text, word_start, idx, lead, opts)
+				}
+
+				// Whitespace before a break is invisible.
+				lead = 0
+
+				idx += rune_size
+				if rune == '\r' && idx < len(text) && text[idx] == '\n' do idx += 1
+
+				append_break(cache)
+
+				word_start = idx
+				continue
+			}
+
+			idx += rune_size
 		}
 
-		if start < idx {
-			word_size := ctx.callbacks.measure_text(
-				opts.font,
-				text[start:idx],
-				opts.font_size,
-				opts.letter_spacing,
-			)
-			append(&cache.tokens, Cached_Token{start, idx, word_size, lead})
+		if word_start < idx {
+			append_word(cache, text, word_start, idx, lead, opts)
 		}
 	} else {
 		// One token per rune. `letter_spacing` is the gap before the next rune, so
-		// it behaves like a lead and disappears at a line break.
+		// it behaves like a lead and disappears at a wrapped line break.
 		for idx < len(text) {
 			rune, rune_size := utf8.decode_rune(text[idx:])
-			start = idx
+
+			if rune == '\n' || rune == '\r' {
+				lead = 0
+
+				idx += rune_size
+				if rune == '\r' && idx < len(text) && text[idx] == '\n' do idx += 1
+
+				append_break(cache)
+				continue
+			}
+
+			start := idx
 			idx += rune_size
+
+			if rune == '\t' {
+				lead += tab_width
+				continue
+			}
 
 			size := space_size
 			if rune != ' ' {
@@ -263,14 +326,59 @@ build_tokens :: proc(cache: ^Token_Cache, text: string, opts: ^Text_Options) {
 				)
 			}
 
-			append(&cache.tokens, Cached_Token{start, idx, size, lead})
+			append(
+				&cache.tokens,
+				Cached_Token {
+					kind = .Text,
+					start = start,
+					end = idx,
+					size = size,
+					lead = lead,
+				},
+			)
 			lead = opts.letter_spacing
 		}
 	}
 }
 
+@(private = "file")
+append_word :: proc(
+	cache: ^Token_Cache,
+	text: string,
+	start, end: int,
+	lead: f64,
+	opts: ^Text_Options,
+) {
+	if start >= end do return
+
+	size := ctx.callbacks.measure_text(
+		opts.font,
+		text[start:end],
+		opts.font_size,
+		opts.letter_spacing,
+	)
+
+	append(
+		&cache.tokens,
+		Cached_Token{kind = .Text, start = start, end = end, size = size, lead = lead},
+	)
+}
+
+@(private = "file")
+append_break :: proc(cache: ^Token_Cache) {
+	append(&cache.tokens, Cached_Token{kind = .Break})
+}
+
 get_text_id :: #force_inline proc(uid: Id, text: string, opts: ^Text_Options) -> Id {
-	return id(uid, text, opts.font, opts.font_size, opts.letter_spacing, opts.line_spacing)
+	return id(
+		uid,
+		text,
+		opts.font,
+		opts.font_size,
+		opts.letter_spacing,
+		opts.line_spacing,
+		opts.tab_spaces,
+	)
 }
 
 measure_text :: proc(
@@ -280,13 +388,16 @@ measure_text :: proc(
 	opts: ^Text_Options,
 	padding: Padding = {},
 ) -> Vec2 {
-	text_id := get_text_id(uid, text, opts)
-	text_size := get_text_size(text_id, text, opts)
+	options := opts^
+	if container_size.x == AUTO do options.wrap = .None
+
+	text_id := get_text_id(uid, text, &options)
+	text_size := get_text_size(text_id, text, &options)
 
 	// `AUTO` disables wrapping, like in `text`. A width of -1 cannot lay anything
 	// out, so the unclamped single-line size is the only useful answer.
-	if container_size.x == AUTO || opts.wrap == .None || fits(text_size, container_size) {
-		if container_size.x != AUTO && opts.wrap != .None do touch_token_cache(text_id, opts.wrap)
+	if !needs_token_layout(text) && (options.wrap == .None || fits(text_size, container_size)) {
+		if options.wrap != .None do touch_token_cache(text_id, options.wrap)
 
 		return {
 			text_size.x + padding.left + padding.right,
@@ -294,11 +405,11 @@ measure_text :: proc(
 		}
 	}
 
-	layout_size_id := id(text_id, opts.wrap, container_size.x, "layout_size")
+	layout_size_id := id(text_id, options.wrap, container_size.x, "layout_size")
 	layout_size, just_created := get(layout_size_id, Vec2)
 	if just_created {
-		tokens := get_token_cache(text_id, text, opts)
-		layout_size^ = run_layout(tokens, text, container_size, opts, draw = false)
+		tokens := get_token_cache(text_id, text, &options)
+		layout_size^ = run_layout(tokens, text, container_size, &options, draw = false)
 	}
 
 	return {
